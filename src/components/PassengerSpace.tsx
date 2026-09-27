@@ -20,6 +20,7 @@ import {
 import passengerGlitchImg from '../assets/images/passenger_glitch_1784413415217.jpg';
 import PassengerVisual from './PassengerVisuals';
 import { TierType } from '../types';
+import { getSafeLocalStorage, getSafeStorageAsync, setSafeStorage } from '../storageHelper';
 
 interface Message {
   text: string;
@@ -113,57 +114,55 @@ export default function PassengerSpace({ tier = 'free', onNavigateToTiers }: Pas
 
   // Load page and sealed state on book change or mount
   useEffect(() => {
-    const getStorageItem = (key: string): string | null => {
-      if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.get === 'function') {
-        return (window as any).storage.get(key) || null;
-      }
-      return localStorage.getItem(key);
-    };
-    
-    // Default to first page
-    let loadedPage = 0;
-    const savedPage = getStorageItem(`${activeBookId}_current_page`);
-    if (savedPage) {
-      const pageIndex = parseInt(savedPage, 10);
-      if (!isNaN(pageIndex) && pageIndex >= 0 && pageIndex < PAGES.length) {
-        if (!isPageLocked(pageIndex)) {
-          loadedPage = pageIndex;
-        }
-      }
-    }
-    setCurrentPage(loadedPage);
+    let isMounted = true;
 
-    const savedSealed = getStorageItem(`${activeBookId}_is_sealed`);
-    if (savedSealed !== null) {
-      setIsSealed(savedSealed === 'true');
+    // Fast sync read from localStorage first
+    const syncSavedPage = getSafeLocalStorage(`${activeBookId}_current_page`);
+    if (syncSavedPage) {
+      const pageIndex = parseInt(syncSavedPage, 10);
+      if (!isNaN(pageIndex) && pageIndex >= 0 && pageIndex < PAGES.length && !isPageLocked(pageIndex)) {
+        setCurrentPage(pageIndex);
+      }
+    } else {
+      setCurrentPage(0);
+    }
+
+    const syncSavedSealed = getSafeLocalStorage(`${activeBookId}_is_sealed`);
+    if (syncSavedSealed !== null) {
+      setIsSealed(syncSavedSealed === 'true');
     } else {
       setIsSealed(true);
     }
     setActiveToolId(null);
+
+    // Also reconcile with async storage if available
+    getSafeStorageAsync(`${activeBookId}_current_page`).then((savedPage) => {
+      if (!isMounted || !savedPage) return;
+      const pageIndex = parseInt(savedPage, 10);
+      if (!isNaN(pageIndex) && pageIndex >= 0 && pageIndex < PAGES.length && !isPageLocked(pageIndex)) {
+        setCurrentPage(pageIndex);
+      }
+    });
+
+    getSafeStorageAsync(`${activeBookId}_is_sealed`).then((savedSealed) => {
+      if (!isMounted || savedSealed === null) return;
+      setIsSealed(savedSealed === 'true');
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, [activeBookId]);
 
   // Sync current page, sealed status, and track highest completed phase for narrative rank
   useEffect(() => {
-    const setStorageItem = (key: string, value: string) => {
-      if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.set === 'function') {
-        (window as any).storage.set(key, value);
-        return;
-      }
-      localStorage.setItem(key, value);
-    };
-    setStorageItem(`${activeBookId}_current_page`, currentPage.toString());
-    setStorageItem(`${activeBookId}_is_sealed`, isSealed.toString());
+    setSafeStorage(`${activeBookId}_current_page`, currentPage.toString());
+    setSafeStorage(`${activeBookId}_is_sealed`, isSealed.toString());
 
-    const getStorageItem = (key: string): string | null => {
-      if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.get === 'function') {
-        return (window as any).storage.get(key) || null;
-      }
-      return localStorage.getItem(key);
-    };
-    const maxPhaseStr = getStorageItem(`${activeBookId}_max_phase`) || '0';
+    const maxPhaseStr = getSafeLocalStorage(`${activeBookId}_max_phase`) || '0';
     const maxPhase = parseInt(maxPhaseStr, 10);
-    if (currentPage > maxPhase) {
-      setStorageItem(`${activeBookId}_max_phase`, currentPage.toString());
+    if (!isNaN(maxPhase) && currentPage > maxPhase) {
+      setSafeStorage(`${activeBookId}_max_phase`, currentPage.toString());
       window.dispatchEvent(new Event('seeker_rank_update'));
     }
   }, [currentPage, isSealed, activeBookId]);

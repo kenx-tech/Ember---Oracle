@@ -122,8 +122,8 @@ Weave this creation through the power of ${cores}.`;
 
     let parsed: any = undefined;
 
-    // Handle /api/generate section schema
-    if (request.endpoint === '/api/generate' || (request.schema?.properties?.sections && request.schema?.properties?.title)) {
+    // Handle draft generation schema
+    if (request.taskPolicy?.taskType === 'draft_generation' || request.endpoint === '/api/generate' || (request.schema?.properties?.sections && request.schema?.properties?.title)) {
       const promptSnippet = request.prompt.substring(0, 30);
       const isEmber = p.id === 'ember_ur';
       const quoteText = isEmber
@@ -159,8 +159,8 @@ Weave this creation through the power of ${cores}.`;
       };
     }
 
-    // Handle /api/iterate schema (full rewrite or section iteration)
-    if (request.endpoint === '/api/iterate' || (request.schema?.properties?.text && request.schema?.properties?.feedback)) {
+    // Handle section iteration schema (full rewrite or section iteration)
+    if (request.taskPolicy?.taskType === 'section_iteration' || request.endpoint === '/api/iterate' || (request.schema?.properties?.text && request.schema?.properties?.feedback)) {
       const body = request.rawBody || {};
       const instruction = body.instruction || request.prompt || "Elevate prose";
       const targetSectionId = body.targetSectionId;
@@ -259,12 +259,12 @@ Your inquiry — *"${question}"* — meets the geometry of these archetypes. Wea
       };
     }
 
-    // Handle /api/channel schema (Spirit Channeling)
-    if (request.endpoint === '/api/channel' || (request.schema?.properties?.channelingText && !request.schema?.properties?.guidanceText && !request.schema?.properties?.sections)) {
-      const body = request.rawBody || {};
-      const spiritName = body.spiritName || "Unknown Spirit";
-      const spiritDetails = body.spiritDetails || {};
-      const userQuestion = body.userQuestion || "Spontaneous Gnosis";
+    // Handle /api/channel schema (Spirit Channeling) — Consumes DomainContext authoritative sourceData
+    if (request.taskPolicy?.taskType === 'channeling' || request.endpoint === '/api/channel' || (request.schema?.properties?.channelingText && !request.schema?.properties?.guidanceText && !request.schema?.properties?.sections)) {
+      const domainCtx = request.domainContext;
+      const spiritName = domainCtx?.subjectName || request.rawBody?.spiritName || "Unknown Spirit";
+      const spiritDetails = (domainCtx?.sourceData as any) || request.rawBody?.spiritDetails || {};
+      const userQuestion = request.rawBody?.userQuestion || "Spontaneous Gnosis";
       const isEmber = p.id === 'ember_ur';
       const isLucifera = p.id === 'lucifera';
 
@@ -292,14 +292,19 @@ Draw from the eternal reserves of your intuition. Your path is cleared through t
       };
     }
 
-    // Handle /api/norse schema (Norse Guardian's Draw consultation)
-    if (request.endpoint === '/api/norse' || (request.taskPolicy?.taskType === 'runic_consultation') || (request.schema?.properties?.guidanceText && request.rawBody?.drawnRune)) {
-      const body = request.rawBody || {};
-      const drawnRune = body.drawnRune || { name: 'Perthro', symbol: 'ᛈ', literal: 'Dice Cup', keywords: ['Wyrd', 'Mystery'] };
-      const drawnGod = body.drawnGod || { name: 'Odin', archetype: 'Sage', domains: ['Wisdom', 'Poetry'] };
-      const drawnRealm = body.drawnRealm || { name: 'Asgard', archetype: 'Order', description: 'Fortress-home of the Æsir' };
-      const drawnConcept = body.drawnConcept || { name: 'Wyrd', theme: 'Becoming', description: 'Cosmic loom' };
-      const question = body.question || "Seeking inspiration for this creative writing journey.";
+    // Handle /api/norse schema (Norse Guardian's Draw consultation) — Consumes composite DomainContexts authoritative sourceData
+    if (request.taskPolicy?.taskType === 'runic_consultation' || request.endpoint === '/api/norse' || (request.schema?.properties?.guidanceText && (request.domainContexts || request.rawBody?.drawnRune))) {
+      const contexts = request.domainContexts || (request.domainContext ? [request.domainContext] : []);
+      const runeCtx = contexts.find(c => c.subjectId.startsWith('rune_'));
+      const godCtx = contexts.find(c => c.subjectId.startsWith('god_'));
+      const realmCtx = contexts.find(c => c.subjectId.startsWith('realm_'));
+      const conceptCtx = contexts.find(c => c.subjectId.startsWith('concept_'));
+
+      const drawnRune = (runeCtx?.sourceData as any) || request.rawBody?.drawnRune || { name: 'Perthro', symbol: 'ᛈ', literal: 'Dice Cup', keywords: ['Wyrd', 'Mystery'] };
+      const drawnGod = (godCtx?.sourceData as any) || request.rawBody?.drawnGod || { name: 'Odin', archetype: 'Sage', domains: ['Wisdom', 'Poetry'] };
+      const drawnRealm = (realmCtx?.sourceData as any) || request.rawBody?.drawnRealm || { name: 'Asgard', archetype: 'Order', description: 'Fortress-home of the Æsir' };
+      const drawnConcept = (conceptCtx?.sourceData as any) || request.rawBody?.drawnConcept || { name: 'Wyrd', theme: 'Becoming', description: 'Cosmic loom' };
+      const question = request.rawBody?.question || "Seeking inspiration for this creative writing journey.";
       const isEmber = p.id === 'ember_ur';
       const isLucifera = p.id === 'lucifera';
 
@@ -463,8 +468,9 @@ export class GeminiProvider implements ModelProvider {
     if (request.schema) {
       try {
         parsed = JSON.parse(outputText.trim());
-      } catch (e) {
-        console.warn("[GeminiProvider] JSON parse warning:", e);
+      } catch (e: any) {
+        console.warn("[GeminiProvider] JSON parse warning:", e?.message || e);
+        throw new Error(`[GeminiProvider] Failed to parse schema-compliant JSON: ${e?.message || e}`);
       }
     }
 

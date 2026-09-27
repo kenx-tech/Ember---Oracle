@@ -18,6 +18,7 @@ import {
   Heart,
   Trash2
 } from 'lucide-react';
+import { getSafeStorageAsync, setSafeStorage, safeJsonParse } from '../storageHelper';
 
 type GeometryType = 'flower_of_life' | 'metatrons_cube' | 'cosmic_torus' | 'sri_yantra';
 type BreathPhase = 'inhale' | 'hold_in' | 'exhale' | 'hold_out';
@@ -62,32 +63,19 @@ export default function GeometryMeditation() {
   const [saveTag, setSaveTag] = useState('');
   const [saveNotes, setSaveNotes] = useState('');
 
-  // Storage helpers
-  const getStorageItem = (key: string): string | null => {
-    if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.get === 'function') {
-      return (window as any).storage.get(key) || null;
-    }
-    return localStorage.getItem(key);
-  };
-
-  const setStorageItem = (key: string, value: string) => {
-    if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.set === 'function') {
-      (window as any).storage.set(key, value);
-    } else {
-      localStorage.setItem(key, value);
-    }
-  };
-
   // Load gallery on mount
   useEffect(() => {
-    const saved = getStorageItem('sacred_glyph_gallery_v1');
-    if (saved) {
-      try {
-        setGallery(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse sacred glyph gallery:", e);
+    let isMounted = true;
+    getSafeStorageAsync('sacred_glyph_gallery_v1').then((saved) => {
+      if (!isMounted || !saved) return;
+      const parsed = safeJsonParse<SavedGlyph[]>(saved, []);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setGallery(parsed);
       }
-    }
+    });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleSaveGlyph = (e: React.FormEvent) => {
@@ -110,7 +98,7 @@ export default function GeometryMeditation() {
 
     const updated = [newGlyph, ...gallery];
     setGallery(updated);
-    setStorageItem('sacred_glyph_gallery_v1', JSON.stringify(updated));
+    setSafeStorage('sacred_glyph_gallery_v1', JSON.stringify(updated));
 
     // Reset Form
     setSaveTag('');
@@ -133,7 +121,7 @@ export default function GeometryMeditation() {
     if (window.confirm("Are you sure you want to return this sacred seal back to the aether?")) {
       const updated = gallery.filter(g => g.id !== id);
       setGallery(updated);
-      setStorageItem('sacred_glyph_gallery_v1', JSON.stringify(updated));
+      setSafeStorage('sacred_glyph_gallery_v1', JSON.stringify(updated));
     }
   };
   

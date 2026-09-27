@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Plus, Trash2, BookOpen, User, Calendar, Settings, X, Tag } from 'lucide-react';
+import { getSafeStorageAsync, setSafeStorage, safeJsonParse } from '../storageHelper';
 
 export interface WikiEntry {
   id: string;
@@ -121,35 +122,21 @@ export default function LoreWiki() {
   const [newCategory, setNewCategory] = useState<'character' | 'event' | 'concept'>('character');
   const [newContent, setNewContent] = useState('');
 
-  // Storage helper
-  const getStorageItem = (key: string): string | null => {
-    if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.get === 'function') {
-      return (window as any).storage.get(key) || null;
-    }
-    return localStorage.getItem(key);
-  };
-
-  const setStorageItem = (key: string, value: string) => {
-    if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.set === 'function') {
-      (window as any).storage.set(key, value);
-    } else {
-      localStorage.setItem(key, value);
-    }
-  };
-
   // Load custom entries on mount
   useEffect(() => {
-    const saved = getStorageItem('lore_wiki_entries_v1');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as WikiEntry[];
+    let isMounted = true;
+    getSafeStorageAsync('lore_wiki_entries_v1').then((saved) => {
+      if (!isMounted || !saved) return;
+      const parsed = safeJsonParse<WikiEntry[]>(saved, []);
+      if (Array.isArray(parsed) && parsed.length > 0) {
         // Combine presets with custom entries (prevent duplicates)
         const customOnly = parsed.filter(p => p.isCustom);
         setEntries([...INITIAL_WIKI_ENTRIES, ...customOnly]);
-      } catch (e) {
-        console.error("Failed to load lore wiki entries:", e);
       }
-    }
+    });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleAddEntry = (e: React.FormEvent) => {
@@ -169,7 +156,7 @@ export default function LoreWiki() {
 
     // Save only custom entries to storage
     const customOnly = updated.filter(u => u.isCustom);
-    setStorageItem('lore_wiki_entries_v1', JSON.stringify(customOnly));
+    setSafeStorage('lore_wiki_entries_v1', JSON.stringify(customOnly));
 
     // Reset Form
     setNewTitle('');
@@ -184,7 +171,7 @@ export default function LoreWiki() {
       const updated = entries.filter(ent => ent.id !== id);
       setEntries(updated);
       const customOnly = updated.filter(u => u.isCustom);
-      setStorageItem('lore_wiki_entries_v1', JSON.stringify(customOnly));
+      setSafeStorage('lore_wiki_entries_v1', JSON.stringify(customOnly));
       if (expandedId === id) setExpandedId(null);
     }
   };

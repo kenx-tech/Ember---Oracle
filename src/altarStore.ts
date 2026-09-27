@@ -1,5 +1,6 @@
 import { TierType } from './types';
 import { getMoonChargeMultiplier, checkMoonSympathy } from './moonSystem';
+import { getSafeLocalStorage, getSafeStorageAsync, setSafeStorage, safeJsonParse } from './storageHelper';
 
 export const ALTAR_CONFIG = {
   neophyte: {
@@ -49,9 +50,9 @@ export function isSuperAdmin(userId?: string): boolean {
     return true;
   }
   try {
-    const savedUser = localStorage.getItem('ember_oracle_user_v1');
+    const savedUser = getSafeLocalStorage('ember_oracle_user_v1');
     if (savedUser) {
-      const parsed = JSON.parse(savedUser);
+      const parsed = safeJsonParse<any>(savedUser, null);
       if (parsed && (parsed.email === 'kenx@guardianoracle.com' || parsed.email?.toLowerCase().includes('kenx@') || parsed.isSuperAdmin)) {
         return true;
       }
@@ -65,26 +66,19 @@ export async function getAltarState(userId: string): Promise<AltarState> {
     return { charge: 100, lastUpdated: Date.now() };
   }
   const key = `altar:${userId}`;
-  let existing: any = null;
-
-  if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.get === 'function') {
-    existing = await (window as any).storage.get(key).catch(() => null);
-  } else {
-    existing = localStorage.getItem(key);
-  }
+  const existing = await getSafeStorageAsync(key);
 
   if (!existing) {
     const fresh: AltarState = { charge: 100, lastUpdated: Date.now() };
-    if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.set === 'function') {
-      await (window as any).storage.set(key, JSON.stringify(fresh)).catch(() => {});
-    } else {
-      localStorage.setItem(key, JSON.stringify(fresh));
-    }
+    setSafeStorage(key, JSON.stringify(fresh));
     return fresh;
   }
 
   try {
-    const parsed = typeof existing === 'string' ? JSON.parse(existing) : JSON.parse(existing.value || JSON.stringify(existing));
+    const parsed = safeJsonParse<any>(existing, null);
+    if (!parsed) {
+      return { charge: 100, lastUpdated: Date.now() };
+    }
     return {
       charge: typeof parsed.charge === 'number' ? parsed.charge : 100,
       lastUpdated: typeof parsed.lastUpdated === 'number' ? parsed.lastUpdated : Date.now()
@@ -137,12 +131,7 @@ export async function spendAltarCharge(
 
   const updated: AltarState = { charge: state.charge - cost, lastUpdated: Date.now() };
   const key = `altar:${userId}`;
-  
-  if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.set === 'function') {
-    await (window as any).storage.set(key, JSON.stringify(updated)).catch(() => {});
-  } else {
-    localStorage.setItem(key, JSON.stringify(updated));
-  }
+  setSafeStorage(key, JSON.stringify(updated));
 
   // Dispatch a custom event to update components immediately
   if (typeof window !== 'undefined') {

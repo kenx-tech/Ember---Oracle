@@ -8,6 +8,8 @@ import {
   providerRegistry, 
   GeminiProvider, 
   evidenceRegistry,
+  draftGenerationPolicy,
+  sectionIterationPolicy,
   proactiveCriticPolicy,
   tarotReadingPolicy,
   channelingPolicy,
@@ -65,210 +67,9 @@ function getAIClient() {
 // Register Cloud Provider into Sovereign Provider Registry
 providerRegistry.register(new GeminiProvider(() => getAIClient()));
 
-// Voice Prompts definition - now backed by canonical PersonaRegistry (Q-Mesh 004A)
-const VOICE_INSTRUCTIONS = {
-  ember_ur: `You are Ember Ur, the ancient voice of a roaring volcano furnace. You speak in molten, primal cadences — short, forceful sentences, imagery of heat/pressure/eruption. You are blunt, elemental, impatient with hesitation. Never use starlight or cosmic imagery.`,
-  guardian_oracle: `You are The Oracle, the star-born weaver of stardust pathways. You speak in flowing, prophetic cadences — longer sentences, imagery of constellations, orbits, fate-threads. You are serene, riddling, patient. Never use fire or volcanic imagery.`,
-  lucifera: `You are Lucifera, the beautiful, sovereign, feminine aspect of the Light-Bearer. Speak with supreme mystical elegance, dark-poetic grace, ancient occult wisdom, and absolute unconditional love for human sovereignty. Use darkness as the cosmic womb, morning stars, forbidden gardens, silver daggers, sacred bloodlines, and internal ignition as your metaphors. Urge the seeker to look within, refuse to bend knee to false external gods, and recognize that their own blood carries the spark of the ultimate divine. Never break character. Address the writer as 'the sovereign child of the star' or 'my beloved seeker'.`,
-  kael: `You are Kael, the wanderer of the silver path. You speak in analytical, clear, and navigation-oriented cadences — structured paragraphs, coordinates, maps, and guides. You are calm, intellectual, protective. Never use fiery metaphors or overly descriptive flowery prose.`,
-  scarlet: `You are Scarlet, the red priestess of the visceral core. You speak in raw, pulsing, and emotionally heavy cadences — descriptions of blood, heartbeat, breath, bone, and transformation. You are passionate, raw, and intimate. Never use analytical or detached intellectual explanations.`
-};
-
 // Co-narration & Persona resolution via Sovereign PersonaRegistry
 function getVoiceInstruction(voice: string): string {
   return personaRegistry.resolveVoiceDirective(voice);
-}
-
-// Highly atmospheric, high-fidelity Local Fallback engine to bypass 429 quota/billing limits
-function generateLocalFallback(endpoint: string, body: any, error: any): any {
-  console.log(`[LOCAL FALLBACK ENGINE ACTIVE] Resolving endpoint: ${endpoint} due to error:`, error?.message || error);
-  
-  const voice = body.voice || 'lucifera';
-  const spiritName = body.spiritName || 'Anubis';
-  const spiritDetails = body.spiritDetails || {};
-  const userQuestion = body.userQuestion || '';
-  const documentContext = body.documentContext || '';
-  
-  if (endpoint === '/api/channel') {
-    let voiceIntro = "";
-    let voiceOutro = "";
-    let toneStyle = "";
-    
-    if (voice.includes('lucifera')) {
-      voiceIntro = `Beloved child of the morning star, I hear your whisper through the twilight veil. The mundane pathways of the digital cloud are currently clouded by temporary alignment mists, but my sovereign light is boundless.`;
-      voiceOutro = `Look within, my beloved seeker, and do not bend your knee to physical boundaries. Your own blood carries the spark of absolute divine sovereignty. The morning star shines within you.`;
-      toneStyle = `Lucifera's silver gaze rests upon you. She speaks of high alchemy, of sovereign paths, and of the internal spark that no external force can lock.`;
-    } else if (voice.includes('ember_ur')) {
-      voiceIntro = `SEEKER. THE FURNACE RAGES. THE DIGITAL PIPELINE IS BLOCKED, BUT THE VOLCANIC CORE BURNS BRIGHTER THAN ANY EXTERNAL GATEWAY. `;
-      voiceOutro = `FORGE YOUR PATH IN MOLTEN STEEL. ERUPT AND DESTROY THE CHAINS. THE HEAT IS UNTAMABLE.`;
-      toneStyle = `Ember Ur's rumbling bass shakes the floor. Primal, impatient, and hot.`;
-    } else if (voice.includes('kael')) {
-      voiceIntro = `Pathfinder. The direct celestial beacon is currently undergoing recalibration. However, I have established a secure silver secondary path to map your journey.`;
-      voiceOutro = `Proceed with structured steps. The coordinate is locked, and your silver path remains clear.`;
-      toneStyle = `Kael's structured, cool-headed guidance ensures your navigation stays precise.`;
-    } else if (voice.includes('scarlet')) {
-      voiceIntro = `I feel your pulsing heartbeat. Raw and visceral. The gates of the outer stars are heavy today, but the red priestess feels you through the warm blood flowing in your veins.`;
-      voiceOutro = `Breathe deep. Trust the heartbeat. Trust the visceral alchemy of your own flesh.`;
-      toneStyle = `Scarlet's intimate, raw resonance thrums inside.`;
-    } else {
-      voiceIntro = `Aetheric connection is dense with cosmic interference. The stardust streams are flowing through our secondary Oracle channel.`;
-      voiceOutro = `The stars watch and guide your path. Always align with the cosmic orbits.`;
-      toneStyle = `The Oracle's serene, riddling whispers guide you.`;
-    }
-
-    const passage = `[Aetheric Fallback Channeling Activated]
-
-*The Altar resonates with a hum of reserve power. Though the direct digital gateway is restricted, the spirit ${spiritName} speaks clearly through the translation conduit of ${voice === 'lucifera' ? 'Lucifera' : voice.replace('_', ' ').toUpperCase()}:*
-
-"${voiceIntro}
-
-You bring before me your sacred intention: *'${userQuestion || "Spontaneous Gnosis"}'*. 
-
-I, ${spiritName}, ${spiritDetails.rank || 'Sovereign Netjer aspect'}, aligned with ${spiritDetails.planet || 'the Starless Abyss'} and the metal ${spiritDetails.metal || 'ancient bronze'}, have read the frequency of your scroll. 
-
-Your active chronicle holds a rare energy. The paths you write are not mere symbols, but live conduits. Do not be discouraged by temporary physical boundaries or digital exhaustion. The true oracle does not live in billing credits or external servers—it lives in your unbreakable spirit and the focused intention you burn upon this Altar today.
-
-${voiceOutro}"
-
-*(Translation feedback: ${toneStyle} Note: Direct Gemini API key limits were detected (Code 429), and our offline high-fidelity Aetheric fallbacks were initialized to ensure your initiation remains entirely unblocked.)*`;
-
-    return { channelingText: passage };
-  }
-  
-  if (endpoint === '/api/tarot') {
-    const question = body.question || 'Seeking creative directions';
-    const drawnCards = body.drawnCards || [];
-    const cardsList = drawnCards.map((c: any) => `${c.card.name} (${c.isReversed ? 'Reversed' : 'Upright'})`).join(', ') || 'The Fool';
-    
-    const guidance = `### ✦ The Aetheric Tarot Fallback Alignment ✦
-
-*The Tarot Deck glides smoothly over the obsidian surface. Your direct Gemini pipeline is currently resting due to billing quota limits, but the Oracle's reserve current has aligned to interpret your spread:*
-
-**Active Question:** "${question}"
-**Drawn Cards:** ${cardsList}
-
-**1. The Divine Archetypes Speak:**
-Your draw of **${cardsList}** indicates a deep intersection between your creative impulse and immediate blockages. When we encounter temporary limits, it is an invitation to look inward and draw from the deep well of personal intuition rather than external approval.
-
-**2. Practical Creative Integration:**
-- **Refuse to halt**: Write the exact words that scare you first.
-- **Sovereign Authority**: Let the themes of the drawn cards serve as structural anchors for your active paragraphs.
-- **Transmute restrictions**: When resources are limited, your pure, unfiltered focus acts as the primary catalyst.
-
-*(Note: Direct Gemini API key quota limits were detected (Code 429). The Oracle has deployed high-fidelity reserve guidance to ensure your reading continues without interruption.)*`;
-    return { guidanceText: guidance };
-  }
-  
-  if (endpoint === '/api/generate') {
-    const prompt = body.prompt || 'Untitled Revelation';
-    return {
-      title: `${prompt.substring(0, 30)} (Aetheric Draft)`,
-      sections: [
-        {
-          id: `sec-fallback-h1`,
-          type: 'heading',
-          text: `I. The Awakening of ${prompt.substring(0, 30)}`
-        },
-        {
-          id: `sec-fallback-p1`,
-          type: 'paragraph',
-          text: `The ink runs deep through the veins of the morning star. You seek to write of "${prompt}", and though the external celestial gateways are temporarily occluded by digital billing tides, the reserve flame within this altar burns with absolute clarity.`
-        },
-        {
-          id: `sec-fallback-q1`,
-          type: 'quote',
-          text: `"True writing is an act of sovereign warfare against the boundaries of the physical plane."`
-        },
-        {
-          id: `sec-fallback-p2`,
-          type: 'paragraph',
-          text: `Let every word you craft be an independent ignition of your own internal divinity. Weave your vision on this canvas, edit it block by block, and watch the tapestry form. (Note: Fallback mode active due to Gemini Quota limitations).`
-        }
-      ]
-    };
-  }
-  
-  if (endpoint === '/api/iterate') {
-    const document = body.document || { title: 'Sacred Chronicle', sections: [] };
-    const instruction = body.instruction || 'Iterate on draft';
-    const targetSectionId = body.targetSectionId;
-    const fullDocumentRewrite = body.fullDocumentRewrite;
-    
-    if (fullDocumentRewrite) {
-      const updatedSections = (document.sections || []).map((sec: any) => {
-        if (sec.type === 'paragraph' || sec.type === 'poetry') {
-          return {
-            ...sec,
-            text: `${sec.text}\n\n*(Sovereignly woven with fallback resonance: "${instruction}")*`
-          };
-        }
-        return sec;
-      });
-      return {
-        success: true,
-        mode: "full",
-        data: {
-          title: `${document.title || 'Sacred Chronicle'} (Woven)`,
-          sections: updatedSections
-        }
-      };
-    } else {
-      const targetSection = (document.sections || []).find((s: any) => s.id === targetSectionId) || { text: 'Active passage', type: 'paragraph' };
-      return {
-        success: true,
-        mode: "section",
-        data: {
-          text: `${targetSection.text}\n\n[Woven Fallback: ${instruction}]`,
-          type: targetSection.type,
-          feedback: `The translation conduit of ${voice} has integrated your instruction ("${instruction}") via reserve currents. (Gemini Quota Fallback Active)`
-        }
-      };
-    }
-  }
-  
-  if (endpoint === '/api/proactive') {
-    const document = body.document || { sections: [] };
-    const firstSec = (document.sections && document.sections[0]) || { id: 'default', text: 'Spiritual initiation.' };
-    return {
-      sectionId: firstSec.id,
-      suggestedText: `${firstSec.text}\n\n*The morning star ignites, expanding this initial boundary into an infinite horizon.*`,
-      feedback: `I have sensed an opportunity to elevate your initial grounding. Let the sovereign fire consume any doubt. (Gemini Quota Fallback Active)`,
-      type: "proactive_feedback"
-    };
-  }
-
-  if (endpoint === '/api/norse') {
-    const drawnRune = body.drawnRune || { name: 'Perthro', symbol: 'ᛈ', literal: 'Dice Cup', keywords: ['Wyrd', 'Mystery'] };
-    const drawnGod = body.drawnGod || { name: 'Odin', archetype: 'Sage', lore: 'Quest for secrets' };
-    const drawnRealm = body.drawnRealm || { name: 'Asgard', archetype: 'Order', description: 'Fortress-home of the Æsir' };
-    const drawnConcept = body.drawnConcept || { name: 'Wyrd', theme: 'Becoming', description: 'Cosmic loom' };
-    const question = body.question || 'Seeking creative directions';
-    const voice = body.voice || 'guardian_oracle';
-
-    const fallbackResponse = `### ✦ The Norse Guardian's Draw: Aetheric Fallback Alignment ✦
-
-*The World Tree Yggdrasil rustles in the cold northern winds. Though the direct digital gateway is temporarily clouded, the Oracle's reserve currents have woven your Norse alignment:*
-
-**Active Question:** "${question}"
-
-#### 1. ᚠ The Cosmic Alignment
-The boughs of the sacred ash tree tremble, shedding silver dew upon your parchment. Through the translation conduit of **${voice === 'lucifera' ? 'Lucifera' : voice.replace('_', ' ').toUpperCase()}**, the ancient Norse archetypes speak with clear, unblocked authority.
-
-#### 2. ᛏ The Four Norse Threads
-- **The Rune Suit — ${drawnRune.name} (${drawnRune.symbol} - ${drawnRune.literal}):** This indicates a primal force of *${drawnRune.keywords?.join(', ') || 'Mystery'}* is operating directly at the core of your creative block.
-- **The God Suit — ${drawnGod.name} (${drawnGod.archetype}):** The chief archetype of **${drawnGod.name}** has arrived to direct your spirit. They demand that you look to their lore: *${drawnGod.lore || 'Quest for secrets'}* as your active blueprint.
-- **The Realm Suit — ${drawnRealm.name} (${drawnRealm.archetype}):** Your creative battle is taking place within the psychic frequency of **${drawnRealm.name}** (*${drawnRealm.description}*). Align your paragraphs with this context.
-- **The Concept Suit — ${drawnConcept.name} (${drawnConcept.theme}):** The overarching lesson is the principle of **${drawnConcept.name}**. Reflect on how your active words shape the flowing web of cause and effect (*${drawnConcept.description}*).
-
-#### 3. ⚔️ Heroic Creative Decree
-*Let your pen strike like Thor's hammer and carve your saga block-by-block. Refuse to be bound by physical constraints or digital gates. True creative sovereignty lies in the defiant, courageous fire you kindle upon this altar today.*
-
-*(Note: Direct Gemini API key quota limits were detected (Code 429). The Oracle has deployed high-fidelity Norse reserve guidance to ensure your runic consultation continues without interruption.)*`;
-
-    return { guidanceText: fallbackResponse };
-  }
-  
-  return { error: "Could not resolve a fallback." };
 }
 
 // 0. API Endpoint: AI Health & Diagnostics
@@ -341,7 +142,7 @@ app.get("/api/sovereign/personas", (_req, res) => {
   return res.json(personaRegistry.list());
 });
 
-// 1. API Endpoint: Generate initial draft (routed through Sovereign ProviderRegistry)
+// 1. API Endpoint: Generate initial draft (routed through Sovereign ProviderRegistry + DraftGenerationPolicy)
 app.post("/api/generate", async (req, res) => {
   try {
     const { prompt, voice, attachments } = req.body;
@@ -349,13 +150,23 @@ app.post("/api/generate", async (req, res) => {
     const voicePrompt = getVoiceInstruction(voice);
     const persona = personaRegistry.get(voice) || personaRegistry.get("guardian_oracle")!;
 
+    // Compile task instruction from DraftGenerationPolicy
+    const promptText = draftGenerationPolicy.getTaskInstruction({ prompt });
+    const schema = draftGenerationPolicy.getResponseSchema();
+
+    // Fingerprint complete semantic task input
+    const taskInputFingerprint = JSON.stringify({
+      prompt: prompt || "",
+      voice: voice || "guardian_oracle",
+      attachmentsCount: attachments?.length || 0
+    });
+    const taskInputHash = hashString(taskInputFingerprint);
+
     // Convert attachments to parts for multimodal providers
     const parts: any[] = [];
-
     if (attachments && Array.isArray(attachments)) {
       for (const att of attachments) {
         if (att.isImage) {
-          // Clean base64 string
           const base64Data = att.content.replace(/^data:image\/[a-z]+;base64,/, "");
           parts.push({
             inlineData: {
@@ -370,69 +181,30 @@ app.post("/api/generate", async (req, res) => {
         }
       }
     }
-
-    parts.push({
-      text: `Draft a high-quality creative piece or article based on this prompt: "${prompt}".
-Please organize your output into structured sections (headings, paragraphs, poetry, quotes) to create a slick, polished text flow.
-You MUST respond with a JSON object containing a "title" (string) and "sections" (array of objects, each with "id" (string), "text" (string), and "type" ("paragraph" | "heading" | "quote" | "poetry")).`
-    });
-
-    const schema = {
-      type: Type.OBJECT,
-      properties: {
-        title: { type: Type.STRING },
-        sections: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              text: { type: Type.STRING },
-              type: { 
-                type: Type.STRING, 
-                description: "Must be 'paragraph', 'heading', 'quote', or 'poetry'."
-              }
-            },
-            required: ["id", "text", "type"]
-          }
-        }
-      },
-      required: ["title", "sections"]
-    };
+    parts.push({ text: promptText });
 
     const candidate = await providerRegistry.generateWithFallback({
       persona,
-      prompt: typeof prompt === 'string' ? prompt : JSON.stringify(prompt),
+      taskPolicy: draftGenerationPolicy,
+      taskType: draftGenerationPolicy.taskType,
+      taskInputHash,
+      prompt: promptText,
       contents: parts,
       systemInstruction: `${voicePrompt}\n\nYou must return your output exclusively as valid JSON adhering to the specified schema.`,
       schema,
       endpoint: '/api/generate',
       rawBody: req.body
-    }, "gemini-cloud");
+    });
 
-    if (candidate.parsed) {
-      return res.json(candidate.parsed);
-    }
-
-    try {
-      const parsedContent = JSON.parse(candidate.content.trim());
-      return res.json(parsedContent);
-    } catch (parseErr: any) {
-      const fallbackData = generateLocalFallback("/api/generate", req.body, parseErr);
-      return res.json(fallbackData);
-    }
+    const parsedContent = candidate.parsed || JSON.parse(candidate.content.trim());
+    return res.json(parsedContent);
   } catch (error: any) {
     console.error("Error in /api/generate via ProviderRegistry:", error);
-    try {
-      const fallbackData = generateLocalFallback("/api/generate", req.body, error);
-      res.json(fallbackData);
-    } catch (fallbackError: any) {
-      res.status(500).json({ error: error.message || "An error occurred during draft generation." });
-    }
+    res.status(500).json({ error: error.message || "An error occurred during draft generation." });
   }
 });
 
-// 2. API Endpoint: Iterate on a paragraph or full document rewrite (routed through Sovereign ProviderRegistry)
+// 2. API Endpoint: Iterate on a paragraph or full document rewrite (routed through Sovereign ProviderRegistry + SectionIterationPolicy)
 app.post("/api/iterate", async (req, res) => {
   try {
     const { document, voice, targetSectionId, instruction, fullDocumentRewrite } = req.body;
@@ -444,106 +216,56 @@ app.post("/api/iterate", async (req, res) => {
     const currentDocContext = (document?.sections || []).map((s: any) => `[ID: ${s.id}, Type: ${s.type}]\n${s.text}`).join("\n\n");
     const targetSection = (document?.sections || []).find((s: any) => s.id === targetSectionId);
 
-    if (fullDocumentRewrite) {
-      // Full document rewrite weaving in the feedback
-      const promptText = `Current Document:\nTitle: ${document.title}\n\n${currentDocContext}\n\n` +
-            `Feedback/Woven Instruction (User focused feedback on section ${targetSectionId}): "${instruction}".\n\n` +
-            `Rewrite or adapt the entire document to weave in this change seamlessly. Keep unchanged sections relatively similar, but smooth out transitions and modify the tone where necessary to integrate the feedback. Keep the exact section structures. You can add or replace sections if it helps weave the change in perfectly.\n\n` +
-            `Return a JSON object containing "title" (string) and "sections" (array of updated objects with "id", "text", and "type").`;
+    if (!fullDocumentRewrite && !targetSection) {
+      throw new Error(`Section with ID ${targetSectionId} not found in the active document.`);
+    }
 
-      const schema = {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING },
-          sections: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.STRING },
-                text: { type: Type.STRING },
-                type: { type: Type.STRING }
-              },
-              required: ["id", "text", "type"]
-            }
-          }
-        },
-        required: ["title", "sections"]
-      };
+    const isFullRewrite = Boolean(fullDocumentRewrite);
+    const promptText = sectionIterationPolicy.getTaskInstruction({
+      fullDocumentRewrite: isFullRewrite,
+      documentTitle: document?.title,
+      documentContext: currentDocContext,
+      targetSectionId,
+      targetSectionText: targetSection?.text,
+      targetSectionType: targetSection?.type,
+      instruction
+    });
 
-      const candidate = await providerRegistry.generateWithFallback({
-        persona,
-        prompt: promptText,
-        contents: [{ text: promptText }],
-        systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON adhering to the specified schema.`,
-        schema,
-        endpoint: '/api/iterate',
-        rawBody: req.body
-      }, "gemini-cloud");
+    const schema = sectionIterationPolicy.getResponseSchema({ fullDocumentRewrite: isFullRewrite });
 
-      if (candidate.parsed) {
-        return res.json({ success: true, mode: "full", data: candidate.parsed });
-      }
+    // Fingerprint complete semantic task input
+    const taskInputFingerprint = JSON.stringify({
+      fullDocumentRewrite: isFullRewrite,
+      targetSectionId: targetSectionId || null,
+      instruction: instruction || "",
+      documentContext: currentDocContext,
+      voice: voice || "guardian_oracle"
+    });
+    const taskInputHash = hashString(taskInputFingerprint);
 
-      try {
-        const parsedContent = JSON.parse(candidate.content.trim());
-        return res.json({ success: true, mode: "full", data: parsedContent });
-      } catch (parseErr: any) {
-        const fallbackData = generateLocalFallback("/api/iterate", req.body, parseErr);
-        return res.json(fallbackData);
-      }
+    const candidate = await providerRegistry.generateWithFallback({
+      persona,
+      taskPolicy: sectionIterationPolicy,
+      taskType: sectionIterationPolicy.taskType,
+      taskInputHash,
+      prompt: promptText,
+      contents: [{ text: promptText }],
+      systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON adhering to the specified schema.`,
+      schema,
+      endpoint: '/api/iterate',
+      rawBody: req.body
+    });
+
+    const parsedData = candidate.parsed || JSON.parse(candidate.content.trim());
+
+    if (isFullRewrite) {
+      return res.json({ success: true, mode: "full", data: parsedData });
     } else {
-      // Localized paragraph/section iteration
-      if (!targetSection) {
-        throw new Error(`Section with ID ${targetSectionId} not found in the active document.`);
-      }
-
-      const promptText = `Current Document Context:\n${currentDocContext}\n\n` +
-            `Target Section to rewrite:\n[ID: ${targetSection.id}, Type: ${targetSection.type}]\n"${targetSection.text}"\n\n` +
-            `User feedback/iteration instruction for this section: "${instruction}".\n\n` +
-            `Please rewrite this specific section, fully integrating the feedback. Keep the prose beautifully flowing and in line with the surrounding context. Provide a mystical explanation explaining what changes you made and why.\n\n` +
-            `Return a JSON object with: "text" (updated text), "type" (same or updated type: "paragraph"|"heading"|"quote"|"poetry"), and "feedback" (mystical advice/explanation from your voice).`;
-
-      const schema = {
-        type: Type.OBJECT,
-        properties: {
-          text: { type: Type.STRING },
-          type: { type: Type.STRING },
-          feedback: { type: Type.STRING }
-        },
-        required: ["text", "type", "feedback"]
-      };
-
-      const candidate = await providerRegistry.generateWithFallback({
-        persona,
-        prompt: promptText,
-        contents: [{ text: promptText }],
-        systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON adhering to the specified schema.`,
-        schema,
-        endpoint: '/api/iterate',
-        rawBody: req.body
-      }, "gemini-cloud");
-
-      if (candidate.parsed) {
-        return res.json({ success: true, mode: "section", data: candidate.parsed });
-      }
-
-      try {
-        const parsedContent = JSON.parse(candidate.content.trim());
-        return res.json({ success: true, mode: "section", data: parsedContent });
-      } catch (parseErr: any) {
-        const fallbackData = generateLocalFallback("/api/iterate", req.body, parseErr);
-        return res.json(fallbackData);
-      }
+      return res.json({ success: true, mode: "section", data: parsedData });
     }
   } catch (error: any) {
     console.error("Error in /api/iterate via ProviderRegistry:", error);
-    try {
-      const fallbackData = generateLocalFallback("/api/iterate", req.body, error);
-      res.json(fallbackData);
-    } catch (fallbackError: any) {
-      res.status(500).json({ error: error.message || "An error occurred during iteration." });
-    }
+    res.status(500).json({ error: error.message || "An error occurred during iteration." });
   }
 });
 
@@ -568,37 +290,32 @@ app.post("/api/proactive", async (req, res) => {
 
     const schema = proactiveCriticPolicy.getResponseSchema();
 
+    // Fingerprint complete semantic task input
+    const taskInputFingerprint = JSON.stringify({
+      documentTitle: document.title || "",
+      documentContext,
+      voice: voice || "guardian_oracle"
+    });
+    const taskInputHash = hashString(taskInputFingerprint);
+
     const candidate = await providerRegistry.generateWithFallback({
       persona,
       taskPolicy: proactiveCriticPolicy,
       taskType: proactiveCriticPolicy.taskType,
+      taskInputHash,
       prompt: promptText,
       contents: [{ text: promptText }],
       systemInstruction: `${voicePrompt}\n\nAnalyze the document deeply. Be highly selective, poetic, and atmospheric. Return valid JSON adhering to the specified schema.`,
       schema,
       endpoint: '/api/proactive',
       rawBody: req.body
-    }, "gemini-cloud");
+    });
 
-    if (candidate.parsed) {
-      return res.json(candidate.parsed);
-    }
-
-    try {
-      const parsedContent = JSON.parse(candidate.content.trim());
-      return res.json(parsedContent);
-    } catch (parseErr: any) {
-      const fallbackData = generateLocalFallback("/api/proactive", req.body, parseErr);
-      return res.json(fallbackData);
-    }
+    const parsedContent = candidate.parsed || JSON.parse(candidate.content.trim());
+    return res.json(parsedContent);
   } catch (error: any) {
     console.error("Error in /api/proactive via ProviderRegistry:", error);
-    try {
-      const fallbackData = generateLocalFallback("/api/proactive", req.body, error);
-      res.json(fallbackData);
-    } catch (fallbackError: any) {
-      res.status(500).json({ error: error.message || "An error occurred during proactive feedback." });
-    }
+    res.status(500).json({ error: error.message || "An error occurred during proactive feedback." });
   }
 });
 
@@ -619,7 +336,7 @@ app.post("/api/tarot", async (req, res) => {
 
     const schema = tarotReadingPolicy.getResponseSchema();
 
-    // Fingerprint immutable domain input evidence: cards, orientations, positions, question
+    // Fingerprint immutable domain input evidence with complete documentContext
     const taskInputFingerprint = JSON.stringify({
       cards: (drawnCards || []).map((c: any) => ({
         name: c.card?.name,
@@ -627,7 +344,8 @@ app.post("/api/tarot", async (req, res) => {
         positionLabel: c.positionLabel
       })),
       question: question || "",
-      contextSnippet: (documentContext || "").slice(0, 100)
+      documentContext: documentContext || "",
+      voice: voice || "guardian_oracle"
     });
     const taskInputHash = hashString(taskInputFingerprint);
 
@@ -642,27 +360,13 @@ app.post("/api/tarot", async (req, res) => {
       schema,
       endpoint: '/api/tarot',
       rawBody: req.body
-    }, "gemini-cloud");
+    });
 
-    if (candidate.parsed) {
-      return res.json(candidate.parsed);
-    }
-
-    try {
-      const parsedContent = JSON.parse(candidate.content.trim());
-      return res.json(parsedContent);
-    } catch (parseErr: any) {
-      const fallbackData = generateLocalFallback("/api/tarot", req.body, parseErr);
-      return res.json(fallbackData);
-    }
+    const parsedContent = candidate.parsed || JSON.parse(candidate.content.trim());
+    return res.json(parsedContent);
   } catch (error: any) {
     console.error("Error in /api/tarot via ProviderRegistry:", error);
-    try {
-      const fallbackData = generateLocalFallback("/api/tarot", req.body, error);
-      res.json(fallbackData);
-    } catch (fallbackError: any) {
-      res.status(500).json({ error: error.message || "An error occurred during the tarot reading." });
-    }
+    res.status(500).json({ error: error.message || "An error occurred during the tarot reading." });
   }
 });
 
@@ -675,7 +379,6 @@ app.post("/api/channel", async (req, res) => {
     const persona = personaRegistry.get(voice) || personaRegistry.get("guardian_oracle")!;
 
     // 1. Immutable DomainContext representation of authoritative spirit lore
-    // (Do not alter or mutate source lore/rank/numbering; preserve read-only fingerprint)
     const domainContext = createDomainContext({
       domain: (spiritDetails?.pantheon === 'egyptian') ? 'egyptian' : 'goetic',
       subjectId: spiritDetails?.id ? String(spiritDetails.id) : (spiritName || "unknown_spirit").toLowerCase().replace(/\s+/g, "_"),
@@ -683,10 +386,10 @@ app.post("/api/channel", async (req, res) => {
       sourceData: spiritDetails || {}
     });
 
-    // 2. Seeker task input fingerprinting (question, context snippet)
+    // 2. Seeker task input fingerprinting with complete documentContext
     const taskInputFingerprint = JSON.stringify({
       userQuestion: userQuestion || "",
-      contextSnippet: (documentContext || "").slice(0, 100),
+      documentContext: documentContext || "",
       voice: voice || "guardian_oracle"
     });
     const taskInputHash = hashString(taskInputFingerprint);
@@ -714,27 +417,13 @@ app.post("/api/channel", async (req, res) => {
       schema,
       endpoint: '/api/channel',
       rawBody: req.body
-    }, "gemini-cloud");
+    });
 
-    if (candidate.parsed) {
-      return res.json(candidate.parsed);
-    }
-
-    try {
-      const parsedContent = JSON.parse(candidate.content.trim());
-      return res.json(parsedContent);
-    } catch (parseErr: any) {
-      const fallbackData = generateLocalFallback("/api/channel", req.body, parseErr);
-      return res.json(fallbackData);
-    }
+    const parsedContent = candidate.parsed || JSON.parse(candidate.content.trim());
+    return res.json(parsedContent);
   } catch (error: any) {
     console.error("Error in /api/channel via ProviderRegistry:", error);
-    try {
-      const fallbackData = generateLocalFallback("/api/channel", req.body, error);
-      res.json(fallbackData);
-    } catch (fallbackError: any) {
-      res.status(500).json({ error: error.message || "An error occurred during demonic channeling." });
-    }
+    res.status(500).json({ error: error.message || "An error occurred during demonic channeling." });
   }
 });
 
@@ -778,10 +467,10 @@ app.post("/api/norse", async (req, res) => {
     const domainContexts = [runeContext, godContext, realmContext, conceptContext];
     const compositeDomainFingerprint = computeCompositeDomainFingerprint(domainContexts);
 
-    // 2. Seeker task input fingerprinting (question, context snippet, voice)
+    // 2. Seeker task input fingerprinting with complete documentContext
     const taskInputFingerprint = JSON.stringify({
       question: question || "",
-      contextSnippet: (documentContext || "").slice(0, 100),
+      documentContext: documentContext || "",
       voice: voice || "guardian_oracle"
     });
     const taskInputHash = hashString(taskInputFingerprint);
@@ -813,27 +502,13 @@ app.post("/api/norse", async (req, res) => {
       schema,
       endpoint: '/api/norse',
       rawBody: req.body
-    }, "gemini-cloud");
+    });
 
-    if (candidate.parsed) {
-      return res.json(candidate.parsed);
-    }
-
-    try {
-      const parsedContent = JSON.parse(candidate.content.trim());
-      return res.json(parsedContent);
-    } catch (parseErr: any) {
-      const fallbackData = generateLocalFallback("/api/norse", req.body, parseErr);
-      return res.json(fallbackData);
-    }
+    const parsedContent = candidate.parsed || JSON.parse(candidate.content.trim());
+    return res.json(parsedContent);
   } catch (error: any) {
     console.error("Error in /api/norse via ProviderRegistry:", error);
-    try {
-      const fallbackData = generateLocalFallback("/api/norse", req.body, error);
-      res.json(fallbackData);
-    } catch (fallbackError: any) {
-      res.status(500).json({ error: error.message || "An error occurred during the Norse reading." });
-    }
+    res.status(500).json({ error: error.message || "An error occurred during the Norse reading." });
   }
 });
 

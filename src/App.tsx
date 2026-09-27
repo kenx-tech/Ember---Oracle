@@ -30,6 +30,7 @@ import GoogleAuthModal from './components/GoogleAuthModal';
 import { spendAltarCharge, getAltarConfigTier, isSuperAdmin } from './altarStore';
 import AltarDepletedModal from './components/AltarDepletedModal';
 import { generateText } from './api';
+import { getSafeLocalStorage, setSafeStorage, safeJsonParse } from './storageHelper';
 
 const STORAGE_KEY = 'ember_oracle_document_v1';
 const HISTORY_KEY = 'ember_oracle_history_v1';
@@ -107,20 +108,16 @@ export default function App() {
     const userId = user?.uid || 'guest';
     const countKey = `ritual-counts:${userId}`;
     let counts: { [key: string]: number } = {};
-    try {
-      const saved = localStorage.getItem(countKey);
-      if (saved) {
-        counts = JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error("Failed to load ritual counts", e);
+    const saved = getSafeLocalStorage(countKey);
+    if (saved) {
+      counts = safeJsonParse<{ [key: string]: number }>(saved, {});
     }
     setRitualCounts(counts);
 
     let maxPhase = 0;
     try {
-      const savedP = localStorage.getItem('passenger_max_phase');
-      const savedW = localStorage.getItem('wildfire_max_phase');
+      const savedP = getSafeLocalStorage('passenger_max_phase');
+      const savedW = getSafeLocalStorage('wildfire_max_phase');
       const maxP = savedP ? parseInt(savedP, 10) || 0 : 0;
       const maxW = savedW ? parseInt(savedW, 10) || 0 : 0;
       maxPhase = Math.max(maxP, maxW);
@@ -136,47 +133,44 @@ export default function App() {
 
   // Load from LocalStorage on mount
   useEffect(() => {
-    const savedDoc = localStorage.getItem(STORAGE_KEY);
+    const savedDoc = getSafeLocalStorage(STORAGE_KEY);
     if (savedDoc) {
-      try {
-        setDocumentState(JSON.parse(savedDoc));
-      } catch (e) {
-        console.error('Failed to parse saved document', e);
+      const parsedDoc = safeJsonParse<DocumentState | null>(savedDoc, null);
+      if (parsedDoc && parsedDoc.sections) {
+        setDocumentState(parsedDoc);
       }
     }
 
-    const savedHistory = localStorage.getItem(HISTORY_KEY);
+    const savedHistory = getSafeLocalStorage(HISTORY_KEY);
     if (savedHistory) {
-      try {
-        setHistory(JSON.parse(savedHistory));
-      } catch (e) {
-        console.error('Failed to parse history', e);
+      const parsedHistory = safeJsonParse<DocumentState[] | null>(savedHistory, null);
+      if (Array.isArray(parsedHistory)) {
+        setHistory(parsedHistory);
       }
     }
 
-    const savedVoice = localStorage.getItem(VOICE_KEY);
+    const savedVoice = getSafeLocalStorage(VOICE_KEY);
     if (savedVoice) {
       setVoice(savedVoice as VoiceType);
     }
 
-    const savedTier = localStorage.getItem(TIER_KEY);
+    const savedTier = getSafeLocalStorage(TIER_KEY);
     if (savedTier) {
       setTier(savedTier as TierType);
     }
 
-    const savedUser = localStorage.getItem(USER_KEY);
+    const savedUser = getSafeLocalStorage(USER_KEY);
     if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        console.error('Failed to parse user', e);
+      const parsedUser = safeJsonParse<any>(savedUser, null);
+      if (parsedUser) {
+        setUser(parsedUser);
       }
     }
   }, []);
 
   // Save to LocalStorage when states change
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(documentState));
+    setSafeStorage(STORAGE_KEY, JSON.stringify(documentState));
     if (documentState.title) {
       document.title = `${documentState.title} | Ember & Oracle`;
     } else {
@@ -185,22 +179,24 @@ export default function App() {
   }, [documentState]);
 
   useEffect(() => {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    setSafeStorage(HISTORY_KEY, JSON.stringify(history));
   }, [history]);
 
   useEffect(() => {
-    localStorage.setItem(VOICE_KEY, voice);
+    setSafeStorage(VOICE_KEY, voice);
   }, [voice]);
 
   useEffect(() => {
-    localStorage.setItem(TIER_KEY, tier);
+    setSafeStorage(TIER_KEY, tier);
   }, [tier]);
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      setSafeStorage(USER_KEY, JSON.stringify(user));
     } else {
-      localStorage.removeItem(USER_KEY);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem(USER_KEY);
+      }
     }
   }, [user]);
 

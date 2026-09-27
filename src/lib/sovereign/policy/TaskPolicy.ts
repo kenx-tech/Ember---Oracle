@@ -9,8 +9,119 @@ export interface TaskPolicy {
   readonly name: string;
   readonly taskType: 'draft_generation' | 'section_iteration' | 'proactive_critic' | 'tarot_reading' | 'channeling' | 'runic_consultation';
   getTaskInstruction(context?: any): string;
-  getResponseSchema(): any;
+  getResponseSchema(context?: any): any;
 }
+
+/**
+ * Draft Generation Policy — creates structured prose drafts organized into typed sections.
+ */
+export class DraftGenerationPolicy implements TaskPolicy {
+  readonly id = "draft_generation_v1";
+  readonly name = "Draft Generation Policy";
+  readonly taskType = "draft_generation" as const;
+
+  getTaskInstruction(context?: { prompt?: string }): string {
+    const prompt = context?.prompt || "";
+    return `Draft a high-quality creative piece or article based on this prompt: "${prompt}".\n` +
+      `Please organize your output into structured sections (headings, paragraphs, poetry, quotes) to create a slick, polished text flow.\n` +
+      `You MUST respond with a JSON object containing a "title" (string) and "sections" (array of objects, each with "id" (string), "text" (string), and "type" ("paragraph" | "heading" | "quote" | "poetry")).`;
+  }
+
+  getResponseSchema(): any {
+    return {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING },
+        sections: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              text: { type: Type.STRING },
+              type: { 
+                type: Type.STRING, 
+                description: "Must be 'paragraph', 'heading', 'quote', or 'poetry'."
+              }
+            },
+            required: ["id", "text", "type"]
+          }
+        }
+      },
+      required: ["title", "sections"]
+    };
+  }
+}
+
+export const draftGenerationPolicy = new DraftGenerationPolicy();
+
+/**
+ * Section Iteration Policy — handles targeted section revisions and global woven rewrites.
+ */
+export class SectionIterationPolicy implements TaskPolicy {
+  readonly id = "section_iteration_v1";
+  readonly name = "Section & Document Iteration Policy";
+  readonly taskType = "section_iteration" as const;
+
+  getTaskInstruction(context?: {
+    fullDocumentRewrite?: boolean;
+    documentTitle?: string;
+    documentContext?: string;
+    targetSectionId?: string;
+    targetSectionText?: string;
+    targetSectionType?: string;
+    instruction?: string;
+  }): string {
+    if (context?.fullDocumentRewrite) {
+      return `Current Document:\nTitle: ${context?.documentTitle || "Untitled"}\n\n${context?.documentContext || ""}\n\n` +
+        `Feedback/Woven Instruction (User focused feedback on section ${context?.targetSectionId || "general"}): "${context?.instruction || ""}".\n\n` +
+        `Rewrite or adapt the entire document to weave in this change seamlessly. Keep unchanged sections relatively similar, but smooth out transitions and modify the tone where necessary to integrate the feedback. Keep the exact section structures. You can add or replace sections if it helps weave the change in perfectly.\n\n` +
+        `Return a JSON object containing "title" (string) and "sections" (array of updated objects with "id", "text", and "type").`;
+    }
+
+    return `Current Document Context:\n${context?.documentContext || ""}\n\n` +
+      `Target Section to rewrite:\n[ID: ${context?.targetSectionId || ""}, Type: ${context?.targetSectionType || "paragraph"}]\n"${context?.targetSectionText || ""}"\n\n` +
+      `User feedback/iteration instruction for this section: "${context?.instruction || ""}".\n\n` +
+      `Please rewrite this specific section, fully integrating the feedback. Keep the prose beautifully flowing and in line with the surrounding context. Provide a mystical explanation explaining what changes you made and why.\n\n` +
+      `Return a JSON object with: "text" (updated text), "type" (same or updated type: "paragraph"|"heading"|"quote"|"poetry"), and "feedback" (mystical advice/explanation from your voice).`;
+  }
+
+  getResponseSchema(context?: { fullDocumentRewrite?: boolean }): any {
+    if (context?.fullDocumentRewrite) {
+      return {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          sections: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                text: { type: Type.STRING },
+                type: { type: Type.STRING }
+              },
+              required: ["id", "text", "type"]
+            }
+          }
+        },
+        required: ["title", "sections"]
+      };
+    }
+
+    return {
+      type: Type.OBJECT,
+      properties: {
+        text: { type: Type.STRING },
+        type: { type: Type.STRING },
+        feedback: { type: Type.STRING }
+      },
+      required: ["text", "type", "feedback"]
+    };
+  }
+}
+
+export const sectionIterationPolicy = new SectionIterationPolicy();
 
 /**
  * Proactive Critic Policy — evaluates a writing canvas and identifies one section

@@ -71,5 +71,6 @@ export interface SeekerUser {
   email: string;
   photoUrl?: string;
   uid: string;
+  phoneNumber?: string;
 }
 

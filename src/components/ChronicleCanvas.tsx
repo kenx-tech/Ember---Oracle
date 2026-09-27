@@ -4,6 +4,7 @@ import { History, BookOpen, Clock, Sparkles, HelpCircle, Archive } from 'lucide-
 import { DocumentState, DocumentSection, VoiceType, TierType } from '../types';
 import Editor from './Editor';
 import ChronicleCanvasHistory, { ChronicleVersion } from './ChronicleCanvasHistory';
+import { getSafeStorageAsync, setSafeStorage, safeJsonParse } from '../storageHelper';
 
 interface ChronicleCanvasProps {
   documentState: DocumentState;
@@ -33,32 +34,21 @@ export default function ChronicleCanvas({
   const [snapshotLabel, setSnapshotLabel] = useState('');
   const [isSnapshotFormOpen, setIsSnapshotFormOpen] = useState(false);
 
-  // Persistence helpers matching window.storage standard
-  const getStorageItem = (key: string): string | null => {
-    if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.get === 'function') {
-      return (window as any).storage.get(key) || null;
-    }
-    return localStorage.getItem(key);
-  };
-
-  const setStorageItem = (key: string, value: string) => {
-    if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.set === 'function') {
-      (window as any).storage.set(key, value);
-    } else {
-      localStorage.setItem(key, value);
-    }
-  };
-
   // Load versions timeline on mount
   useEffect(() => {
-    const saved = getStorageItem('chronicle_branches_v1');
-    if (saved) {
-      try {
-        setVersions(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse chronicle branches:', e);
+    let isMounted = true;
+    getSafeStorageAsync('chronicle_branches_v1').then((saved) => {
+      if (!isMounted) return;
+      if (saved) {
+        const parsed = safeJsonParse<ChronicleVersion[]>(saved, []);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setVersions(parsed);
+        }
       }
-    }
+    });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Save a custom snapshot branch manually
@@ -87,7 +77,7 @@ export default function ChronicleCanvas({
 
     const updated = [newVersion, ...versions];
     setVersions(updated);
-    setStorageItem('chronicle_branches_v1', JSON.stringify(updated));
+    setSafeStorage('chronicle_branches_v1', JSON.stringify(updated));
   };
 
   // Auto-backup whenever an AI rewrite is about to occur
@@ -108,12 +98,12 @@ export default function ChronicleCanvas({
   const handleDeleteVersion = (id: string) => {
     const updated = versions.filter(v => v.id !== id);
     setVersions(updated);
-    setStorageItem('chronicle_branches_v1', JSON.stringify(updated));
+    setSafeStorage('chronicle_branches_v1', JSON.stringify(updated));
   };
 
   const handleClearTimeline = () => {
     setVersions([]);
-    setStorageItem('chronicle_branches_v1', JSON.stringify([]));
+    setSafeStorage('chronicle_branches_v1', JSON.stringify([]));
   };
 
   // Extract all sections that currently have annotations

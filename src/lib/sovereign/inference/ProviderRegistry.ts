@@ -31,30 +31,50 @@ export class ProviderRegistry {
 
   /**
    * Core routing doctrine:
-   * Try preferred provider (e.g. Gemini).
-   * If it fails (quota, network, offline, or thrown error), fail over to sovereign local provider.
-   * The Persona survives seamlessly with full evidence bundle generation.
+   * Evaluate registered providers in priority order.
+   * If preferredProviderId is specified, try that first; otherwise iterate through all registered non-fallback providers.
+   * If a provider fails (availability, network, quota, schema parse error, or throws), fail over to the next candidate.
+   * When all external/primary providers are exhausted, migrate to the sovereign local engine.
+   * The Persona and state survive seamlessly with full evidence bundle generation.
    */
   public async generateWithFallback(
     request: InferenceRequest, 
-    preferredProviderId: string = "gemini-cloud"
+    preferredProviderId?: string
   ): Promise<CandidateResult> {
-    const primary = this.get(preferredProviderId);
-    
-    if (primary) {
+    const candidateIds: string[] = [];
+
+    if (preferredProviderId) {
+      candidateIds.push(preferredProviderId);
+    } else {
+      // Prioritize non-fallback providers (e.g. gemini-cloud, future ollama-local)
+      for (const [id] of this.providers.entries()) {
+        if (id !== this.defaultFallbackProvider.id) {
+          candidateIds.push(id);
+        }
+      }
+    }
+
+    for (const id of candidateIds) {
+      const provider = this.get(id);
+      if (!provider) continue;
+
       try {
-        const available = await primary.isAvailable();
+        const available = await provider.isAvailable();
         if (available) {
-          return await primary.generate(request);
+          const result = await provider.generate(request);
+          if (request.schema && result.parsed === undefined) {
+            throw new Error(`Provider '${id}' produced unparseable JSON for schema-enforced request.`);
+          }
+          return result;
         }
       } catch (err: any) {
-        console.warn(`[SOVEREIGN PROVIDER MIGRATION] Primary provider '${preferredProviderId}' failed: ${err?.message || err}. Migrating execution to sovereign local engine.`);
+        console.warn(`[SOVEREIGN PROVIDER MIGRATION] Provider '${id}' failed: ${err?.message || err}. Migrating execution.`);
       }
     }
 
     // Failover: Persona and state remain sovereign
     const fallback = this.defaultFallbackProvider;
-    console.log(`[SOVEREIGN RESILIENCE] Routing invocation for persona '${request.persona.id}' through local provider '${fallback.id}'.`);
+    console.log(`[SOVEREIGN RESILIENCE] Routing invocation for persona '${request.persona.id}' through sovereign local engine '${fallback.id}'.`);
     return await fallback.generate(request);
   }
 }

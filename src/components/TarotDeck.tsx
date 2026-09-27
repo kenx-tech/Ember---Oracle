@@ -28,6 +28,7 @@ import {
 import { TAROT_DECK } from '../tarotData';
 import { TarotCard, TarotReading, VoiceType, TierType } from '../types';
 import { getMoonPhase, PHASE_CARD_AFFINITY } from '../moonSystem';
+import { getSafeStorageAsync, setSafeStorage, safeJsonParse } from '../storageHelper';
 import LoreWiki from './LoreWiki';
 import { NORSE_RUNES, NORSE_GODS, NORSE_REALMS, NORSE_CONCEPTS, NorseRune, NorseGod, NorseRealm, NorseConcept } from '../norseData';
 
@@ -146,22 +147,6 @@ export default function TarotDeck({
   const [altarChargeForModal, setAltarChargeForModal] = useState(100);
   const [altarActionForModal, setAltarActionForModal] = useState<'ritual' | 'tarotSpread' | 'invokeVision' | 'blendMode'>('tarotSpread');
 
-  // Storage helper functions
-  const getStorageItem = (key: string): string | null => {
-    if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.get === 'function') {
-      return (window as any).storage.get(key) || null;
-    }
-    return localStorage.getItem(key);
-  };
-
-  const setStorageItem = (key: string, value: string) => {
-    if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.set === 'function') {
-      (window as any).storage.set(key, value);
-    } else {
-      localStorage.setItem(key, value);
-    }
-  };
-
   // Daily Pull & Journal State
   interface DailyPullEntry {
     id: string;
@@ -183,14 +168,17 @@ export default function TarotDeck({
 
   // Load Daily Journal on mount
   useEffect(() => {
-    const saved = getStorageItem('tarot_daily_journal_v1');
-    if (saved) {
-      try {
-        setDailyJournal(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse daily journal:", e);
+    let isMounted = true;
+    getSafeStorageAsync('tarot_daily_journal_v1').then((saved) => {
+      if (!isMounted || !saved) return;
+      const parsed = safeJsonParse<DailyPullEntry[]>(saved, []);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setDailyJournal(parsed);
       }
-    }
+    });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleDailyPull = async () => {
@@ -275,7 +263,7 @@ export default function TarotDeck({
 
         const updated = [newEntry, ...dailyJournal];
         setDailyJournal(updated);
-        setStorageItem('tarot_daily_journal_v1', JSON.stringify(updated));
+        setSafeStorage('tarot_daily_journal_v1', JSON.stringify(updated));
 
       } catch (err: any) {
         console.error(err);
@@ -289,7 +277,7 @@ export default function TarotDeck({
   const clearDailyJournal = () => {
     if (window.confirm("Are you sure you want to burn all ancestral entries from your daily journal? This is irreversible.")) {
       setDailyJournal([]);
-      setStorageItem('tarot_daily_journal_v1', JSON.stringify([]));
+      setSafeStorage('tarot_daily_journal_v1', JSON.stringify([]));
     }
   };
 

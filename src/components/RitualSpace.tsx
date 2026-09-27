@@ -22,6 +22,7 @@ import { VoiceType, TierType } from '../types';
 import { spendAltarCharge, getAltarConfigTier, isSuperAdmin } from '../altarStore';
 import { checkMoonSympathy, getRitualPhaseFraming } from '../moonSystem';
 import AltarDepletedModal from './AltarDepletedModal';
+import { getSafeStorageAsync, setSafeStorage, safeJsonParse } from '../storageHelper';
 
 import grandConvergenceImg from '../assets/images/grand_convergence_1784412233195.jpg';
 import kenPortraitImg from '../assets/images/ken_portrait_1784412241117.jpg';
@@ -583,25 +584,15 @@ export default function RitualSpace({
     
     let counts: { [key: string]: number } = {};
     try {
-      const existing = await (window as any).storage.get(countKey);
-      if (existing && existing.value) {
-        counts = JSON.parse(existing.value);
+      const existing = await getSafeStorageAsync(countKey);
+      if (existing) {
+        counts = safeJsonParse<{ [key: string]: number }>(existing, {});
       }
-    } catch (e) {
-      try {
-        const saved = localStorage.getItem(countKey);
-        if (saved) {
-          counts = JSON.parse(saved);
-        }
-      } catch (_) {}
-    }
+    } catch (e) {}
 
     counts[ritualKey] = (counts[ritualKey] || 0) + 1;
 
-    try {
-      await (window as any).storage.set(countKey, JSON.stringify(counts));
-    } catch (e) {}
-    localStorage.setItem(countKey, JSON.stringify(counts));
+    setSafeStorage(countKey, JSON.stringify(counts));
 
     let passengerMaxPhase = 0;
     try {
@@ -644,49 +635,26 @@ export default function RitualSpace({
 
   // Load ledger and Rite of Ash & Ink logs on mount
   useEffect(() => {
-    const loadLedger = async () => {
-      try {
-        const existing = await (window as any).storage?.get('goetic_channeling_ledger');
-        if (existing && existing.value) {
-          setLedger(JSON.parse(existing.value));
-          return;
-        } else if (typeof existing === 'string') {
-          setLedger(JSON.parse(existing));
-          return;
-        }
-      } catch (e) {}
-      try {
-        const saved = localStorage.getItem('goetic_channeling_ledger');
-        if (saved) {
-          setLedger(JSON.parse(saved));
-        }
-      } catch (e) {
-        console.error("Failed to parse ledger:", e);
+    let isMounted = true;
+    getSafeStorageAsync('goetic_channeling_ledger').then((saved) => {
+      if (!isMounted || !saved) return;
+      const parsed = safeJsonParse<any[]>(saved, []);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setLedger(parsed);
       }
-    };
-    loadLedger();
+    });
 
-    const loadAshLogs = async () => {
-      try {
-        const existing = await (window as any).storage?.get('ash_and_ink_logs');
-        if (existing && existing.value) {
-          setAshLogs(JSON.parse(existing.value));
-          return;
-        } else if (typeof existing === 'string') {
-          setAshLogs(JSON.parse(existing));
-          return;
-        }
-      } catch (e) {}
-      try {
-        const savedAsh = localStorage.getItem('ash_and_ink_logs');
-        if (savedAsh) {
-          try {
-            setAshLogs(JSON.parse(savedAsh));
-          } catch (_) {}
-        }
-      } catch (_) {}
+    getSafeStorageAsync('ash_and_ink_logs').then((savedAsh) => {
+      if (!isMounted || !savedAsh) return;
+      const parsed = safeJsonParse<any[]>(savedAsh, []);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setAshLogs(parsed);
+      }
+    });
+
+    return () => {
+      isMounted = false;
     };
-    loadAshLogs();
   }, []);
 
   // Grounding progress ticking timer
@@ -1203,16 +1171,7 @@ export default function RitualSpace({
         setLedger(updated);
         
         // Write to storage
-        const saveLedger = async (data: any[]) => {
-          const serialized = JSON.stringify(data);
-          try {
-            await (window as any).storage?.set('goetic_channeling_ledger', serialized);
-          } catch (e) {}
-          try {
-            localStorage.setItem('goetic_channeling_ledger', serialized);
-          } catch (_) {}
-        };
-        saveLedger(updated);
+        setSafeStorage('goetic_channeling_ledger', JSON.stringify(updated));
         incrementRitualCount('goetic_channeling');
 
       } else {
@@ -1264,16 +1223,7 @@ export default function RitualSpace({
     setAshLogs(updatedLogs);
 
     // Write to storage
-    const saveAshLogs = async (data: any[]) => {
-      const serialized = JSON.stringify(data);
-      try {
-        await (window as any).storage?.set('ash_and_ink_logs', serialized);
-      } catch (e) {}
-      try {
-        localStorage.setItem('ash_and_ink_logs', serialized);
-      } catch (_) {}
-    };
-    await saveAshLogs(updatedLogs);
+    setSafeStorage('ash_and_ink_logs', JSON.stringify(updatedLogs));
 
     // Reset steps
     setAshStepIndex(0);
