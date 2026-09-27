@@ -1,0 +1,6 @@
+{
+  "name": "Ember & Oracle",
+  "description": "A slick, distraction-free mystical co-writing companion featuring Ember Ur and the Guardian Oracle with interactive Tarot guides.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
