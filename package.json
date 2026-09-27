@@ -1,5 +1,6 @@
 {
-  "name": "react-example",
+  "name": "ember-and-oracle",
+  "description": "A slick, distraction-free mystical co-writing companion featuring Ember Ur and the Guardian Oracle with interactive Tarot guides.",
   "private": true,
   "version": "0.0.0",
   "type": "module",
