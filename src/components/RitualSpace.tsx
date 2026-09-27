@@ -42,89 +42,79 @@ interface Spirit {
 
 // Core name/number/rank/office data follows the traditional Ars Goetia (Lemegeton) ordering
 const GOETIA_SPIRITS_RAW = [
-  // KINGS — Major Arcana assigned
-  { num: 1,  name: "Bael",      rank: "King", legions: 66, element: "Fire",  planet: "Sun",     tarot: "The Emperor" },
-  { num: 9,  name: "Paimon",    rank: "King", legions: 200, element: "Air",   planet: "Jupiter", tarot: "The Hierophant" },
-  { num: 32, name: "Asmodeus",  rank: "King", legions: 72, element: "Fire",  planet: "Mars",    tarot: "The Tower" },
-  { num: 68, name: "Belial",    rank: "King", legions: 80, element: "Earth", planet: "Saturn",  tarot: "The Devil" },
-
-  // DUKES
-  { num: 2,  name: "Agares",    rank: "Duke", legions: 31, element: "Earth", planet: "Venus",   tarot: "Four of Pentacles" },
-  { num: 6,  name: "Valefor",   rank: "Duke", legions: 10, element: "Air",   planet: "Mercury", tarot: "Seven of Swords" },
-  { num: 14, name: "Vepar",     rank: "Duke", legions: 29, element: "Water", planet: "Moon",    tarot: "Nine of Cups" },
-  { num: 16, name: "Zepar",     rank: "Duke", legions: 26, element: "Fire",  planet: "Venus",   tarot: "Two of Wands" },
-  { num: 21, name: "Vine",      rank: "King/Duke", legions: 36, element: "Water", planet: "Moon", tarot: "Five of Cups" },
-  { num: 26, name: "Bune",      rank: "Duke", legions: 30, element: "Earth", planet: "Saturn",  tarot: "Ten of Pentacles" },
-  { num: 29, name: "Astaroth",  rank: "Duke", legions: 40, element: "Earth", planet: "Venus",   tarot: "The Moon" },
-  { num: 33, name: "Vapula",    rank: "Duke", legions: 36, element: "Air",   planet: "Mercury", tarot: "Eight of Swords" },
-  { num: 37, name: "Focalor",   rank: "Duke", legions: 3,  element: "Water", planet: "Moon",    tarot: "Five of Swords" },
-  { num: 38, name: "Vepar",     rank: "Duke", legions: 29, element: "Water", planet: "Venus",   tarot: "Nine of Cups" },
-  { num: 40, name: "Furcas",    rank: "Knight", legions: 20, element: "Air", planet: "Mercury", tarot: "Page of Swords" },
-  { num: 43, name: "Raum",      rank: "Earl", legions: 30, element: "Fire",  planet: "Sun",     tarot: "Six of Wands" },
-  { num: 46, name: "Trimasael", rank: "President", legions: 26, element: "Fire", planet: "Mars", tarot: "Five of Wands" },
-  { num: 51, name: "Balam",     rank: "King", legions: 40, element: "Fire",  planet: "Mars",    tarot: "Strength" },
-  { num: 53, name: "Vine",      rank: "King", legions: 36, element: "Water", planet: "Moon",    tarot: "Five of Cups" },
-  { num: 59, name: "Murmur",    rank: "Duke/Earl", legions: 30, element: "Water", planet: "Saturn", tarot: "Four of Cups" },
-  { num: 65, name: "Amdusias",  rank: "Duke", legions: 29, element: "Air",   planet: "Mercury", tarot: "King of Swords" },
-  { num: 66, name: "Andras",    rank: "Marquis", legions: 30, element: "Air", planet: "Mars",   tarot: "Five of Swords" },
-  { num: 69, name: "Decarabia", rank: "Marquis", legions: 30, element: "Air", planet: "Mercury", tarot: "Star" },
-  { num: 71, name: "Dantalion", rank: "Duke", legions: 36, element: "Water", planet: "Moon",    tarot: "Two of Cups" },
-  { num: 72, name: "Andromalius", rank: "Earl", legions: 36, element: "Earth", planet: "Saturn", tarot: "Judgement" },
-
-  // PRINCES
-  { num: 3,  name: "Vassago",   rank: "Prince", legions: 26, element: "Water", planet: "Jupiter", tarot: "Six of Cups" },
-  { num: 11, name: "Gusion",    rank: "Duke", legions: 40, element: "Earth", planet: "Jupiter", tarot: "Six of Pentacles" },
-  { num: 12, name: "Sitri",     rank: "Prince", legions: 60, element: "Fire", planet: "Venus",   tarot: "Two of Wands" },
-  { num: 36, name: "Stolas",    rank: "Prince", legions: 26, element: "Air",  planet: "Jupiter", tarot: "King of Wands" },
-  { num: 55, name: "Orobas",    rank: "Prince", legions: 20, element: "Water", planet: "Jupiter", tarot: "Ten of Cups" },
-  { num: 70, name: "Seere",     rank: "Prince", legions: 26, element: "Air",  planet: "Jupiter", tarot: "Eight of Wands" },
-
-  // MARQUIS
-  { num: 4,  name: "Samigina",  rank: "Marquis", legions: 30, element: "Water", planet: "Moon",  tarot: "Seven of Cups" },
-  { num: 15, name: "Sabnock",   rank: "Marquis", legions: 50, element: "Fire",  planet: "Mars",   tarot: "Nine of Wands" },
-  { num: 17, name: "Cimeries",  rank: "Marquis", legions: 20, element: "Earth", planet: "Mars",  tarot: "Knight of Pentacles" },
-  { num: 27, name: "Ronove",    rank: "Marquis/Earl", legions: 19, element: "Air", planet: "Mercury", tarot: "Page of Cups" },
-  { num: 30, name: "Forneus",   rank: "Marquis", legions: 29, element: "Water", planet: "Venus", tarot: "Three of Cups" },
-  { num: 35, name: "Marchosias", rank: "Marquis", legions: 30, element: "Fire", planet: "Mars",  tarot: "Seven of Wands" },
-  { num: 41, name: "Balam",     rank: "Marquis", legions: 40, element: "Fire", planet: "Mars",   tarot: "Strength" },
-  { num: 45, name: "Andrealphus", rank: "Marquis", legions: 30, element: "Air", planet: "Mercury", tarot: "Eight of Swords" },
-  { num: 47, name: "Naberius",  rank: "Marquis", legions: 19, element: "Fire", planet: "Mars",   tarot: "Knight of Wands" },
-  { num: 61, name: "Sabnock",   rank: "Marquis", legions: 50, element: "Fire", planet: "Mars",   tarot: "Nine of Wands" },
-  { num: 63, name: "Andras",    rank: "Marquis", legions: 30, element: "Air", planet: "Mars",    tarot: "Five of Swords" },
-  { num: 64, name: "Haures",    rank: "Duke", legions: 36, element: "Fire", planet: "Mars",      tarot: "Emperor" },
-
-  // PRESIDENTS
-  { num: 5,  name: "Marbas",    rank: "President", legions: 36, element: "Earth", planet: "Mercury", tarot: "Six of Pentacles" },
-  { num: 10, name: "Buer",      rank: "President", legions: 50, element: "Fire",  planet: "Sun",     tarot: "Six of Wands" },
-  { num: 13, name: "Beleth",    rank: "King", legions: 85, element: "Fire",  planet: "Mars",    tarot: "Emperor" },
-  { num: 18, name: "Bathin",    rank: "Duke", legions: 30, element: "Earth", planet: "Saturn",  tarot: "Four of Pentacles" },
-  { num: 22, name: "Bifrons",   rank: "Earl", legions: 6,  element: "Earth", planet: "Saturn",  tarot: "Eight of Pentacles" },
-  { num: 23, name: "Uvall",     rank: "Duke", legions: 37, element: "Water", planet: "Venus",   tarot: "Two of Cups" },
-  { num: 24, name: "Haagenti",  rank: "President", legions: 33, element: "Earth", planet: "Venus", tarot: "Nine of Pentacles" },
-  { num: 34, name: "Vapula",    rank: "Duke", legions: 36, element: "Air", planet: "Mercury",   tarot: "Eight of Swords" },
-  { num: 44, name: "Focalor",   rank: "Duke", legions: 3,  element: "Water", planet: "Moon",    tarot: "Five of Swords" },
-  { num: 48, name: "Glasya-Labolas", rank: "President", legions: 36, element: "Air", planet: "Mercury", tarot: "Seven of Swords" },
-  { num: 49, name: "Zagan",     rank: "King/President", legions: 33, element: "Earth", planet: "Saturn", tarot: "Ten of Pentacles" },
-
-  // KNIGHTS / EARLS / MISC
-  { num: 7,  name: "Amon",      rank: "Marquis", legions: 40, element: "Fire", planet: "Mars",   tarot: "Five of Wands" },
-  { num: 8,  name: "Barbatos",  rank: "Duke", legions: 30, element: "Earth", planet: "Jupiter", tarot: "Four of Pentacles" },
-  { num: 19, name: "Sallos",    rank: "Duke", legions: 30, element: "Water", planet: "Venus",   tarot: "Two of Cups" },
-  { num: 20, name: "Purson",    rank: "King", legions: 22, element: "Fire", planet: "Sun",      tarot: "Six of Wands" },
-  { num: 25, name: "Crocell",   rank: "Duke", legions: 48, element: "Water", planet: "Moon",    tarot: "Seven of Cups" },
-  { num: 28, name: "Berith",    rank: "Duke", legions: 26, element: "Fire", planet: "Mars",     tarot: "Five of Wands" },
-  { num: 31, name: "Furfur",    rank: "Earl", legions: 26, element: "Air", planet: "Venus",     tarot: "Page of Swords" },
-  { num: 39, name: "Malphas",   rank: "President", legions: 40, element: "Earth", planet: "Saturn", tarot: "Eight of Pentacles" },
-  { num: 42, name: "Alloces",   rank: "Duke", legions: 36, element: "Fire", planet: "Sun",      tarot: "Six of Wands" },
-  { num: 50, name: "Volac",     rank: "President", legions: 38, element: "Earth", planet: "Mercury", tarot: "Knight of Pentacles" },
-  { num: 52, name: "Gremory",   rank: "Duke", legions: 26, element: "Water", planet: "Venus",   tarot: "Queen of Cups" },
-  { num: 54, name: "Vine",      rank: "King", legions: 36, element: "Water", planet: "Moon",    tarot: "Five of Cups" },
-  { num: 56, name: "Gremory",   rank: "Duchess", legions: 26, element: "Water", planet: "Venus", tarot: "Queen of Cups" },
-  { num: 57, name: "Ose",       rank: "President", legions: 3, element: "Fire", planet: "Sun",  tarot: "Two of Wands" },
-  { num: 58, name: "Amy",       rank: "President", legions: 36, element: "Fire", planet: "Mercury", tarot: "Knight of Wands" },
-  { num: 60, name: "Orias",     rank: "Marquis", legions: 30, element: "Fire", planet: "Sun",   tarot: "Sun" },
-  { num: 62, name: "Ipos",      rank: "Earl/Prince", legions: 36, element: "Air", planet: "Venus", tarot: "Page of Wands" },
-  { num: 67, name: "Haures",    rank: "Duke", legions: 36, element: "Fire", planet: "Mars",     tarot: "Emperor" },
+  // 1 to 72 in exact traditional sequence
+  { num: 1,  name: "Bael",           rank: "King",           legions: 66,  element: "Fire",  planet: "Sun",     tarot: "The Emperor" },
+  { num: 2,  name: "Agares",         rank: "Duke",           legions: 31,  element: "Earth", planet: "Venus",   tarot: "Four of Pentacles" },
+  { num: 3,  name: "Vassago",        rank: "Prince",         legions: 26,  element: "Water", planet: "Jupiter", tarot: "Six of Cups" },
+  { num: 4,  name: "Samigina",       rank: "Marquis",        legions: 30,  element: "Water", planet: "Moon",    tarot: "Seven of Cups" },
+  { num: 5,  name: "Marbas",         rank: "President",      legions: 36,  element: "Earth", planet: "Mercury", tarot: "Six of Pentacles" },
+  { num: 6,  name: "Valefor",        rank: "Duke",           legions: 10,  element: "Air",   planet: "Mercury", tarot: "Seven of Swords" },
+  { num: 7,  name: "Amon",           rank: "Marquis",        legions: 40,  element: "Fire",  planet: "Mars",    tarot: "Five of Wands" },
+  { num: 8,  name: "Barbatos",       rank: "Duke",           legions: 30,  element: "Earth", planet: "Jupiter", tarot: "Four of Pentacles" },
+  { num: 9,  name: "Paimon",         rank: "King",           legions: 200, element: "Air",   planet: "Jupiter", tarot: "The Hierophant" },
+  { num: 10, name: "Buer",           rank: "President",      legions: 50,  element: "Fire",  planet: "Sun",     tarot: "Six of Wands" },
+  { num: 11, name: "Gusion",         rank: "Duke",           legions: 40,  element: "Earth", planet: "Jupiter", tarot: "Six of Pentacles" },
+  { num: 12, name: "Sitri",          rank: "Prince",         legions: 60,  element: "Fire",  planet: "Venus",   tarot: "Two of Wands" },
+  { num: 13, name: "Beleth",         rank: "King",           legions: 85,  element: "Fire",  planet: "Mars",    tarot: "The Emperor" },
+  { num: 14, name: "Leraje",         rank: "Marquis",        legions: 30,  element: "Fire",  planet: "Mars",    tarot: "Five of Wands" },
+  { num: 15, name: "Eligos",         rank: "Duke",           legions: 60,  element: "Earth", planet: "Venus",   tarot: "Knight of Cups" },
+  { num: 16, name: "Zepar",          rank: "Duke",           legions: 26,  element: "Fire",  planet: "Venus",   tarot: "Two of Wands" },
+  { num: 17, name: "Botis",          rank: "President/Earl", legions: 60,  element: "Water", planet: "Mars",    tarot: "Two of Swords" },
+  { num: 18, name: "Bathin",         rank: "Duke",           legions: 30,  element: "Earth", planet: "Saturn",  tarot: "Four of Pentacles" },
+  { num: 19, name: "Sallos",         rank: "Duke",           legions: 30,  element: "Water", planet: "Venus",   tarot: "Two of Cups" },
+  { num: 20, name: "Purson",         rank: "King",           legions: 22,  element: "Fire",  planet: "Sun",     tarot: "Six of Wands" },
+  { num: 21, name: "Marax",          rank: "Earl/President", legions: 30,  element: "Earth", planet: "Saturn",  tarot: "Eight of Pentacles" },
+  { num: 22, name: "Ipos",           rank: "Earl/Prince",    legions: 36,  element: "Air",   planet: "Venus",   tarot: "Page of Wands" },
+  { num: 23, name: "Aim",            rank: "Duke",           legions: 26,  element: "Fire",  planet: "Venus",   tarot: "Three of Wands" },
+  { num: 24, name: "Naberius",       rank: "Marquis",        legions: 19,  element: "Fire",  planet: "Mars",    tarot: "Knight of Wands" },
+  { num: 25, name: "Glasya-Labolas", rank: "President/Earl", legions: 36,  element: "Air",   planet: "Mercury", tarot: "Seven of Swords" },
+  { num: 26, name: "Bune",           rank: "Duke",           legions: 30,  element: "Earth", planet: "Saturn",  tarot: "Ten of Pentacles" },
+  { num: 27, name: "Ronove",         rank: "Marquis/Earl",   legions: 19,  element: "Air",   planet: "Mercury", tarot: "Page of Cups" },
+  { num: 28, name: "Berith",         rank: "Duke",           legions: 26,  element: "Fire",  planet: "Mars",    tarot: "Five of Wands" },
+  { num: 29, name: "Astaroth",       rank: "Duke",           legions: 40,  element: "Earth", planet: "Venus",   tarot: "The Moon" },
+  { num: 30, name: "Forneus",        rank: "Marquis",        legions: 29,  element: "Water", planet: "Venus",   tarot: "Three of Cups" },
+  { num: 31, name: "Foras",          rank: "President",      legions: 29,  element: "Earth", planet: "Mercury", tarot: "Eight of Pentacles" },
+  { num: 32, name: "Asmodeus",       rank: "King",           legions: 72,  element: "Fire",  planet: "Mars",    tarot: "The Tower" },
+  { num: 33, name: "Gaap",           rank: "Prince/President", legions: 66, element: "Air",  planet: "Jupiter", tarot: "Three of Swords" },
+  { num: 34, name: "Furfur",         rank: "Earl",           legions: 26,  element: "Air",   planet: "Venus",   tarot: "Page of Swords" },
+  { num: 35, name: "Marchosias",     rank: "Marquis",        legions: 30,  element: "Fire",  planet: "Mars",    tarot: "Seven of Wands" },
+  { num: 36, name: "Stolas",         rank: "Prince",         legions: 26,  element: "Air",   planet: "Jupiter", tarot: "King of Wands" },
+  { num: 37, name: "Phenex",         rank: "Marquis",        legions: 20,  element: "Fire",  planet: "Moon",    tarot: "Ten of Wands" },
+  { num: 38, name: "Halphas",        rank: "Earl",           legions: 26,  element: "Air",   planet: "Mars",    tarot: "Five of Swords" },
+  { num: 39, name: "Malphas",        rank: "President",      legions: 40,  element: "Earth", planet: "Saturn",  tarot: "Eight of Pentacles" },
+  { num: 40, name: "Raum",           rank: "Earl",           legions: 30,  element: "Fire",  planet: "Sun",     tarot: "Six of Wands" },
+  { num: 41, name: "Focalor",        rank: "Duke",           legions: 30,  element: "Water", planet: "Moon",    tarot: "Five of Swords" },
+  { num: 42, name: "Vepar",          rank: "Duke",           legions: 29,  element: "Water", planet: "Moon",    tarot: "Nine of Cups" },
+  { num: 43, name: "Sabnock",        rank: "Marquis",        legions: 50,  element: "Fire",  planet: "Mars",    tarot: "Nine of Wands" },
+  { num: 44, name: "Shax",           rank: "Marquis",        legions: 30,  element: "Air",   planet: "Mars",    tarot: "Four of Swords" },
+  { num: 45, name: "Vine",           rank: "King/Earl",      legions: 36,  element: "Water", planet: "Moon",    tarot: "Five of Cups" },
+  { num: 46, name: "Bifrons",        rank: "Earl",           legions: 60,  element: "Earth", planet: "Saturn",  tarot: "Eight of Pentacles" },
+  { num: 47, name: "Uvall",          rank: "Duke",           legions: 37,  element: "Water", planet: "Venus",   tarot: "Two of Cups" },
+  { num: 48, name: "Haagenti",       rank: "President",      legions: 33,  element: "Earth", planet: "Venus",   tarot: "Nine of Pentacles" },
+  { num: 49, name: "Crocell",        rank: "Duke",           legions: 48,  element: "Water", planet: "Moon",    tarot: "Seven of Cups" },
+  { num: 50, name: "Furcas",         rank: "Knight",         legions: 20,  element: "Air",   planet: "Saturn",  tarot: "Page of Swords" },
+  { num: 51, name: "Balam",          rank: "King",           legions: 40,  element: "Fire",  planet: "Mars",    tarot: "Strength" },
+  { num: 52, name: "Alloces",        rank: "Duke",           legions: 36,  element: "Fire",  planet: "Sun",     tarot: "Six of Wands" },
+  { num: 53, name: "Caim",           rank: "President",      legions: 30,  element: "Air",   planet: "Mercury", tarot: "Ace of Swords" },
+  { num: 54, name: "Murmur",         rank: "Duke/Earl",      legions: 30,  element: "Water", planet: "Saturn",  tarot: "Four of Cups" },
+  { num: 55, name: "Orobas",         rank: "Prince",         legions: 20,  element: "Water", planet: "Jupiter", tarot: "Ten of Cups" },
+  { num: 56, name: "Gremory",        rank: "Duchess",        legions: 26,  element: "Water", planet: "Venus",   tarot: "Queen of Cups" },
+  { num: 57, name: "Ose",            rank: "President",      legions: 30,  element: "Fire",  planet: "Sun",     tarot: "Two of Wands" },
+  { num: 58, name: "Amy",            rank: "President",      legions: 36,  element: "Fire",  planet: "Mercury", tarot: "Knight of Wands" },
+  { num: 59, name: "Orias",          rank: "Marquis",        legions: 30,  element: "Fire",  planet: "Sun",     tarot: "The Sun" },
+  { num: 60, name: "Vapula",         rank: "Duke",           legions: 36,  element: "Air",   planet: "Mercury", tarot: "Eight of Swords" },
+  { num: 61, name: "Zagan",          rank: "King/President", legions: 33,  element: "Earth", planet: "Saturn",  tarot: "Ten of Pentacles" },
+  { num: 62, name: "Volac",          rank: "President",      legions: 38,  element: "Earth", planet: "Mercury", tarot: "Knight of Pentacles" },
+  { num: 63, name: "Andras",         rank: "Marquis",        legions: 30,  element: "Air",   planet: "Mars",    tarot: "Five of Swords" },
+  { num: 64, name: "Haures",         rank: "Duke",           legions: 36,  element: "Fire",  planet: "Mars",    tarot: "The Emperor" },
+  { num: 65, name: "Andrealphus",    rank: "Marquis",        legions: 30,  element: "Air",   planet: "Mercury", tarot: "Eight of Swords" },
+  { num: 66, name: "Cimeries",       rank: "Marquis",        legions: 20,  element: "Earth", planet: "Mars",    tarot: "Knight of Pentacles" },
+  { num: 67, name: "Amdusias",       rank: "Duke",           legions: 29,  element: "Air",   planet: "Mercury", tarot: "King of Swords" },
+  { num: 68, name: "Belial",         rank: "King",           legions: 80,  element: "Earth", planet: "Saturn",  tarot: "The Devil" },
+  { num: 69, name: "Decarabia",      rank: "Marquis",        legions: 30,  element: "Air",   planet: "Mercury", tarot: "The Star" },
+  { num: 70, name: "Seere",          rank: "Prince",         legions: 26,  element: "Air",   planet: "Jupiter", tarot: "Eight of Wands" },
+  { num: 71, name: "Dantalion",      rank: "Duke",           legions: 36,  element: "Water", planet: "Moon",    tarot: "Two of Cups" },
+  { num: 72, name: "Andromalius",    rank: "Earl",           legions: 36,  element: "Earth", planet: "Saturn",  tarot: "Judgement" },
 ];
 
 const getMetal = (planet: string): string => {
@@ -198,8 +188,8 @@ const getCustomOfficeAndLore = (s: { num: number; name: string; rank: string; le
       lore: "Appears as a majestic owl wearing a crown of silver, holding a stardust compass. Rules 26 legions."
     },
     52: {
-      office: "Tells of things past, present, and to come. Locates hidden gold, and inspires the deepest romantic and artistic alignments.",
-      lore: "Appears as a beautiful woman with a duchess's crown tied about her waist, riding a camel. She speaks with a beautiful voice and rules 26 legions."
+      office: "Teaches astronomy and all the liberal sciences, gives good familiars, and reveals hidden celestial mechanics.",
+      lore: "Appears as a warrior with a lion's face and flaming red eyes, riding upon a great horse. He speaks with a gravity that commands 36 legions."
     },
     55: {
       office: "Declares truth of the creation, prevents lies, and grants honors.",
@@ -451,6 +441,7 @@ const RANK_TIER_COPY: Record<string, {
 const RANK_PRIORITY = ["Conduit", "Netjer", "King", "Duke", "Prince", "Marquis", "President", "Earl", "Knight"];
 
 export function resolveTier(rankString: string): string {
+  if (!rankString) return "Earl";
   if (rankString.toLowerCase().includes("conduit") || rankString.toLowerCase().includes("adept")) return "Conduit";
   if (rankString.toLowerCase().includes("duchess")) return "Duke";
   if (rankString.toLowerCase().includes("netjer")) return "Netjer";
@@ -653,35 +644,47 @@ export default function RitualSpace({
 
   // Load ledger and Rite of Ash & Ink logs on mount
   useEffect(() => {
-    const getStorageItem = (key: string): string | null => {
-      if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.get === 'function') {
-        return (window as any).storage.get(key) || null;
-      }
-      return localStorage.getItem(key);
-    };
-    const saved = getStorageItem('goetic_channeling_ledger');
-    if (saved) {
+    const loadLedger = async () => {
       try {
-        setLedger(JSON.parse(saved));
+        const existing = await (window as any).storage?.get('goetic_channeling_ledger');
+        if (existing && existing.value) {
+          setLedger(JSON.parse(existing.value));
+          return;
+        } else if (typeof existing === 'string') {
+          setLedger(JSON.parse(existing));
+          return;
+        }
+      } catch (e) {}
+      try {
+        const saved = localStorage.getItem('goetic_channeling_ledger');
+        if (saved) {
+          setLedger(JSON.parse(saved));
+        }
       } catch (e) {
         console.error("Failed to parse ledger:", e);
       }
-    }
+    };
+    loadLedger();
 
     const loadAshLogs = async () => {
       try {
-        const existing = await (window as any).storage.get('ash_and_ink_logs');
+        const existing = await (window as any).storage?.get('ash_and_ink_logs');
         if (existing && existing.value) {
           setAshLogs(JSON.parse(existing.value));
+          return;
+        } else if (typeof existing === 'string') {
+          setAshLogs(JSON.parse(existing));
+          return;
         }
-      } catch (e) {
+      } catch (e) {}
+      try {
         const savedAsh = localStorage.getItem('ash_and_ink_logs');
         if (savedAsh) {
           try {
             setAshLogs(JSON.parse(savedAsh));
           } catch (_) {}
         }
-      }
+      } catch (_) {}
     };
     loadAshLogs();
   }, []);
@@ -1200,14 +1203,16 @@ export default function RitualSpace({
         setLedger(updated);
         
         // Write to storage
-        const setStorageItem = (key: string, value: string) => {
-          if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.set === 'function') {
-            (window as any).storage.set(key, value);
-            return;
-          }
-          localStorage.setItem(key, value);
+        const saveLedger = async (data: any[]) => {
+          const serialized = JSON.stringify(data);
+          try {
+            await (window as any).storage?.set('goetic_channeling_ledger', serialized);
+          } catch (e) {}
+          try {
+            localStorage.setItem('goetic_channeling_ledger', serialized);
+          } catch (_) {}
         };
-        setStorageItem('goetic_channeling_ledger', JSON.stringify(updated));
+        saveLedger(updated);
         incrementRitualCount('goetic_channeling');
 
       } else {
@@ -1259,14 +1264,16 @@ export default function RitualSpace({
     setAshLogs(updatedLogs);
 
     // Write to storage
-    const setStorageItem = (key: string, value: string) => {
-      if (typeof window !== 'undefined' && (window as any).storage && typeof (window as any).storage.set === 'function') {
-        (window as any).storage.set(key, value);
-        return;
-      }
-      localStorage.setItem(key, value);
+    const saveAshLogs = async (data: any[]) => {
+      const serialized = JSON.stringify(data);
+      try {
+        await (window as any).storage?.set('ash_and_ink_logs', serialized);
+      } catch (e) {}
+      try {
+        localStorage.setItem('ash_and_ink_logs', serialized);
+      } catch (_) {}
     };
-    setStorageItem('ash_and_ink_logs', JSON.stringify(updatedLogs));
+    await saveAshLogs(updatedLogs);
 
     // Reset steps
     setAshStepIndex(0);

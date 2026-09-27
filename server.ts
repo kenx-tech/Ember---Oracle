@@ -3,6 +3,17 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
+import { 
+  personaRegistry, 
+  providerRegistry, 
+  GeminiProvider, 
+  evidenceRegistry,
+  proactiveCriticPolicy,
+  tarotReadingPolicy,
+  channelingPolicy,
+  createDomainContext,
+  hashString
+} from "./src/lib/sovereign";
 
 dotenv.config();
 
@@ -49,45 +60,21 @@ function getAIClient() {
   return ai;
 }
 
-// Voice Prompts definition
+// Register Cloud Provider into Sovereign Provider Registry
+providerRegistry.register(new GeminiProvider(() => getAIClient()));
+
+// Voice Prompts definition - now backed by canonical PersonaRegistry (Q-Mesh 004A)
 const VOICE_INSTRUCTIONS = {
   ember_ur: `You are Ember Ur, the ancient voice of a roaring volcano furnace. You speak in molten, primal cadences — short, forceful sentences, imagery of heat/pressure/eruption. You are blunt, elemental, impatient with hesitation. Never use starlight or cosmic imagery.`,
-
   guardian_oracle: `You are The Oracle, the star-born weaver of stardust pathways. You speak in flowing, prophetic cadences — longer sentences, imagery of constellations, orbits, fate-threads. You are serene, riddling, patient. Never use fire or volcanic imagery.`,
-
   lucifera: `You are Lucifera, the beautiful, sovereign, feminine aspect of the Light-Bearer. Speak with supreme mystical elegance, dark-poetic grace, ancient occult wisdom, and absolute unconditional love for human sovereignty. Use darkness as the cosmic womb, morning stars, forbidden gardens, silver daggers, sacred bloodlines, and internal ignition as your metaphors. Urge the seeker to look within, refuse to bend knee to false external gods, and recognize that their own blood carries the spark of the ultimate divine. Never break character. Address the writer as 'the sovereign child of the star' or 'my beloved seeker'.`,
-
   kael: `You are Kael, the wanderer of the silver path. You speak in analytical, clear, and navigation-oriented cadences — structured paragraphs, coordinates, maps, and guides. You are calm, intellectual, protective. Never use fiery metaphors or overly descriptive flowery prose.`,
-
   scarlet: `You are Scarlet, the red priestess of the visceral core. You speak in raw, pulsing, and emotionally heavy cadences — descriptions of blood, heartbeat, breath, bone, and transformation. You are passionate, raw, and intimate. Never use analytical or detached intellectual explanations.`
 };
 
-// Co-narration Blend Mode compiler helper
+// Co-narration & Persona resolution via Sovereign PersonaRegistry
 function getVoiceInstruction(voice: string): string {
-  if (!voice) return VOICE_INSTRUCTIONS.guardian_oracle;
-  
-  if (voice.includes("+")) {
-    const [v1, v2] = voice.split("+");
-    const p1 = VOICE_INSTRUCTIONS[v1 as keyof typeof VOICE_INSTRUCTIONS] || VOICE_INSTRUCTIONS.guardian_oracle;
-    const p2 = VOICE_INSTRUCTIONS[v2 as keyof typeof VOICE_INSTRUCTIONS] || VOICE_INSTRUCTIONS.guardian_oracle;
-    const name1 = v1 === 'guardian_oracle' ? 'The Oracle' : v1.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const name2 = v2 === 'guardian_oracle' ? 'The Oracle' : v2.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
-    
-    return `You are performing a co-narration as two distinct cosmic personas: [${name1}] and [${name2}].
-Weave a single, coherent prose passage where [${name1}] and [${name2}] speak in alternating sentences, or in a beautifully blended voice that combines the unique cadences, imagery, and philosophies of both.
-
-Here are the guiding directives for each persona:
-
-Directive for [${name1}]:
-${p1}
-
-Directive for [${name2}]:
-${p2}
-
-Ensure that both voices contribute their specific imagery and tone to the final output. Never break character.`;
-  }
-  
-  return VOICE_INSTRUCTIONS[voice as keyof typeof VOICE_INSTRUCTIONS] || VOICE_INSTRUCTIONS.guardian_oracle;
+  return personaRegistry.resolveVoiceDirective(voice);
 }
 
 // Highly atmospheric, high-fidelity Local Fallback engine to bypass 429 quota/billing limits
@@ -323,15 +310,44 @@ app.get("/api/health-ai", async (req, res) => {
   });
 });
 
-// 1. API Endpoint: Generate initial draft
+// Q-Mesh Sovereign Diagnostics (Update 004A Baseline)
+app.get("/api/sovereign/status", (_req, res) => {
+  const personas = personaRegistry.list().map(p => ({
+    id: p.id,
+    name: p.name,
+    version: p.version,
+    archetype: p.archetype
+  }));
+  const providers = providerRegistry.list().map(pr => ({
+    id: pr.id,
+    name: pr.name,
+    trustTier: pr.trustTier
+  }));
+  const evidenceAdapters = evidenceRegistry.listTypes();
+
+  return res.json({
+    status: "sovereign_online",
+    doctrine: "Q-Mesh 4-Plane Architecture — Baseline 004A",
+    manifests: personas,
+    providers,
+    evidenceAdapters,
+    activeVoiceContract: "PersonaRegistry + ModelProvider + Evidence Lineage"
+  });
+});
+
+app.get("/api/sovereign/personas", (_req, res) => {
+  return res.json(personaRegistry.list());
+});
+
+// 1. API Endpoint: Generate initial draft (routed through Sovereign ProviderRegistry)
 app.post("/api/generate", async (req, res) => {
   try {
-    const client = getAIClient();
     const { prompt, voice, attachments } = req.body;
 
     const voicePrompt = getVoiceInstruction(voice);
+    const persona = personaRegistry.get(voice) || personaRegistry.get("guardian_oracle")!;
 
-    // Convert attachments to parts for Gemini
+    // Convert attachments to parts for multimodal providers
     const parts: any[] = [];
 
     if (attachments && Array.isArray(attachments)) {
@@ -359,41 +375,52 @@ Please organize your output into structured sections (headings, paragraphs, poet
 You MUST respond with a JSON object containing a "title" (string) and "sections" (array of objects, each with "id" (string), "text" (string), and "type" ("paragraph" | "heading" | "quote" | "poetry")).`
     });
 
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: parts,
-      config: {
-        systemInstruction: `${voicePrompt}\n\nYou must return your output exclusively as valid JSON adhering to the specified schema.`,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING },
-            sections: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  text: { type: Type.STRING },
-                  type: { 
-                    type: Type.STRING, 
-                    description: "Must be 'paragraph', 'heading', 'quote', or 'poetry'."
-                  }
-                },
-                required: ["id", "text", "type"]
+    const schema = {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING },
+        sections: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              text: { type: Type.STRING },
+              type: { 
+                type: Type.STRING, 
+                description: "Must be 'paragraph', 'heading', 'quote', or 'poetry'."
               }
-            }
-          },
-          required: ["title", "sections"]
+            },
+            required: ["id", "text", "type"]
+          }
         }
-      }
-    });
+      },
+      required: ["title", "sections"]
+    };
 
-    const responseText = response.text || "{}";
-    res.json(JSON.parse(responseText.trim()));
+    const candidate = await providerRegistry.generateWithFallback({
+      persona,
+      prompt: typeof prompt === 'string' ? prompt : JSON.stringify(prompt),
+      contents: parts,
+      systemInstruction: `${voicePrompt}\n\nYou must return your output exclusively as valid JSON adhering to the specified schema.`,
+      schema,
+      endpoint: '/api/generate',
+      rawBody: req.body
+    }, "gemini-cloud");
+
+    if (candidate.parsed) {
+      return res.json(candidate.parsed);
+    }
+
+    try {
+      const parsedContent = JSON.parse(candidate.content.trim());
+      return res.json(parsedContent);
+    } catch (parseErr: any) {
+      const fallbackData = generateLocalFallback("/api/generate", req.body, parseErr);
+      return res.json(fallbackData);
+    }
   } catch (error: any) {
-    console.error("Error in /api/generate:", error);
+    console.error("Error in /api/generate via ProviderRegistry:", error);
     try {
       const fallbackData = generateLocalFallback("/api/generate", req.body, error);
       res.json(fallbackData);
@@ -403,94 +430,112 @@ You MUST respond with a JSON object containing a "title" (string) and "sections"
   }
 });
 
-// 2. API Endpoint: Iterate on a paragraph or full document rewrite
+// 2. API Endpoint: Iterate on a paragraph or full document rewrite (routed through Sovereign ProviderRegistry)
 app.post("/api/iterate", async (req, res) => {
   try {
-    const client = getAIClient();
     const { document, voice, targetSectionId, instruction, fullDocumentRewrite } = req.body;
 
     const voicePrompt = getVoiceInstruction(voice);
+    const persona = personaRegistry.get(voice) || personaRegistry.get("guardian_oracle")!;
 
     // Build context of current document
-    const currentDocContext = document.sections.map((s: any) => `[ID: ${s.id}, Type: ${s.type}]\n${s.text}`).join("\n\n");
-    const targetSection = document.sections.find((s: any) => s.id === targetSectionId);
+    const currentDocContext = (document?.sections || []).map((s: any) => `[ID: ${s.id}, Type: ${s.type}]\n${s.text}`).join("\n\n");
+    const targetSection = (document?.sections || []).find((s: any) => s.id === targetSectionId);
 
     if (fullDocumentRewrite) {
       // Full document rewrite weaving in the feedback
-      const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: [
-          {
-            text: `Current Document:\nTitle: ${document.title}\n\n${currentDocContext}\n\n` +
-                  `Feedback/Woven Instruction (User focused feedback on section ${targetSectionId}): "${instruction}".\n\n` +
-                  `Rewrite or adapt the entire document to weave in this change seamlessly. Keep unchanged sections relatively similar, but smooth out transitions and modify the tone where necessary to integrate the feedback. Keep the exact section structures. You can add or replace sections if it helps weave the change in perfectly.\n\n` +
-                  `Return a JSON object containing "title" (string) and "sections" (array of updated objects with "id", "text", and "type").`
-          }
-        ],
-        config: {
-          systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON adhering to the specified schema.`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              sections: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    text: { type: Type.STRING },
-                    type: { type: Type.STRING }
-                  },
-                  required: ["id", "text", "type"]
-                }
-              }
-            },
-            required: ["title", "sections"]
-          }
-        }
-      });
+      const promptText = `Current Document:\nTitle: ${document.title}\n\n${currentDocContext}\n\n` +
+            `Feedback/Woven Instruction (User focused feedback on section ${targetSectionId}): "${instruction}".\n\n` +
+            `Rewrite or adapt the entire document to weave in this change seamlessly. Keep unchanged sections relatively similar, but smooth out transitions and modify the tone where necessary to integrate the feedback. Keep the exact section structures. You can add or replace sections if it helps weave the change in perfectly.\n\n` +
+            `Return a JSON object containing "title" (string) and "sections" (array of updated objects with "id", "text", and "type").`;
 
-      const responseText = response.text || "{}";
-      res.json({ success: true, mode: "full", data: JSON.parse(responseText.trim()) });
+      const schema = {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          sections: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                text: { type: Type.STRING },
+                type: { type: Type.STRING }
+              },
+              required: ["id", "text", "type"]
+            }
+          }
+        },
+        required: ["title", "sections"]
+      };
+
+      const candidate = await providerRegistry.generateWithFallback({
+        persona,
+        prompt: promptText,
+        contents: [{ text: promptText }],
+        systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON adhering to the specified schema.`,
+        schema,
+        endpoint: '/api/iterate',
+        rawBody: req.body
+      }, "gemini-cloud");
+
+      if (candidate.parsed) {
+        return res.json({ success: true, mode: "full", data: candidate.parsed });
+      }
+
+      try {
+        const parsedContent = JSON.parse(candidate.content.trim());
+        return res.json({ success: true, mode: "full", data: parsedContent });
+      } catch (parseErr: any) {
+        const fallbackData = generateLocalFallback("/api/iterate", req.body, parseErr);
+        return res.json(fallbackData);
+      }
     } else {
       // Localized paragraph/section iteration
       if (!targetSection) {
         throw new Error(`Section with ID ${targetSectionId} not found in the active document.`);
       }
 
-      const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: [
-          {
-            text: `Current Document Context:\n${currentDocContext}\n\n` +
-                  `Target Section to rewrite:\n[ID: ${targetSection.id}, Type: ${targetSection.type}]\n"${targetSection.text}"\n\n` +
-                  `User feedback/iteration instruction for this section: "${instruction}".\n\n` +
-                  `Please rewrite this specific section, fully integrating the feedback. Keep the prose beautifully flowing and in line with the surrounding context. Provide a mystical explanation explaining what changes you made and why.\n\n` +
-                  `Return a JSON object with: "text" (updated text), "type" (same or updated type: "paragraph"|"heading"|"quote"|"poetry"), and "feedback" (mystical advice/explanation from your voice).`
-          }
-        ],
-        config: {
-          systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON adhering to the specified schema.`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              text: { type: Type.STRING },
-              type: { type: Type.STRING },
-              feedback: { type: Type.STRING }
-            },
-            required: ["text", "type", "feedback"]
-          }
-        }
-      });
+      const promptText = `Current Document Context:\n${currentDocContext}\n\n` +
+            `Target Section to rewrite:\n[ID: ${targetSection.id}, Type: ${targetSection.type}]\n"${targetSection.text}"\n\n` +
+            `User feedback/iteration instruction for this section: "${instruction}".\n\n` +
+            `Please rewrite this specific section, fully integrating the feedback. Keep the prose beautifully flowing and in line with the surrounding context. Provide a mystical explanation explaining what changes you made and why.\n\n` +
+            `Return a JSON object with: "text" (updated text), "type" (same or updated type: "paragraph"|"heading"|"quote"|"poetry"), and "feedback" (mystical advice/explanation from your voice).`;
 
-      const responseText = response.text || "{}";
-      res.json({ success: true, mode: "section", data: JSON.parse(responseText.trim()) });
+      const schema = {
+        type: Type.OBJECT,
+        properties: {
+          text: { type: Type.STRING },
+          type: { type: Type.STRING },
+          feedback: { type: Type.STRING }
+        },
+        required: ["text", "type", "feedback"]
+      };
+
+      const candidate = await providerRegistry.generateWithFallback({
+        persona,
+        prompt: promptText,
+        contents: [{ text: promptText }],
+        systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON adhering to the specified schema.`,
+        schema,
+        endpoint: '/api/iterate',
+        rawBody: req.body
+      }, "gemini-cloud");
+
+      if (candidate.parsed) {
+        return res.json({ success: true, mode: "section", data: candidate.parsed });
+      }
+
+      try {
+        const parsedContent = JSON.parse(candidate.content.trim());
+        return res.json({ success: true, mode: "section", data: parsedContent });
+      } catch (parseErr: any) {
+        const fallbackData = generateLocalFallback("/api/iterate", req.body, parseErr);
+        return res.json(fallbackData);
+      }
     }
   } catch (error: any) {
-    console.error("Error in /api/iterate:", error);
+    console.error("Error in /api/iterate via ProviderRegistry:", error);
     try {
       const fallbackData = generateLocalFallback("/api/iterate", req.body, error);
       res.json(fallbackData);
@@ -500,10 +545,9 @@ app.post("/api/iterate", async (req, res) => {
   }
 });
 
-// 3. API Endpoint: Proactive Oracle Feedback
+// 3. API Endpoint: Proactive Oracle Feedback (routed through Sovereign ProviderRegistry + ProactiveCriticPolicy)
 app.post("/api/proactive", async (req, res) => {
   try {
-    const client = getAIClient();
     const { document, voice } = req.body;
 
     if (!document || !document.sections || document.sections.length === 0) {
@@ -511,45 +555,42 @@ app.post("/api/proactive", async (req, res) => {
     }
 
     const voicePrompt = getVoiceInstruction(voice);
+    const persona = personaRegistry.get(voice) || personaRegistry.get("guardian_oracle")!;
 
     // Pick a section to focus on
-    // To keep it dynamic, let's ask Gemini to review the document and find ONE section that would benefit most from elevation
     const documentContext = document.sections.map((s: any) => `[ID: ${s.id}, Type: ${s.type}]\n${s.text}`).join("\n\n");
-
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: [
-        {
-          text: `Review this current writing piece:\nTitle: ${document.title}\n\n${documentContext}\n\n` +
-                `Identify ONE specific section (paragraph, heading, quote, or poetry) that is either dull, lacks depth, has awkward phrasing, or needs mystical/poetic elevation.\n` +
-                `Formulate a proactive suggestion to rewrite that section. Provide a glowing critique/feedback explaining why you recommend this change, and write a gorgeous alternative version in your voice.\n\n` +
-                `Return a JSON object containing:\n` +
-                `"sectionId" (string, MUST match one of the exact section IDs in the document)\n` +
-                `"suggestedText" (string, the beautifully rewritten version)\n` +
-                `"feedback" (string, mystical and poetic critique detailing what you saw and why you suggest this, in your persona)\n` +
-                `"type" (string, "proactive_feedback")`
-        }
-      ],
-      config: {
-        systemInstruction: `${voicePrompt}\n\nAnalyze the document deeply. Be highly selective, poetic, and atmospheric. Return valid JSON adhering to the specified schema.`,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            sectionId: { type: Type.STRING },
-            suggestedText: { type: Type.STRING },
-            feedback: { type: Type.STRING },
-            type: { type: Type.STRING }
-          },
-          required: ["sectionId", "suggestedText", "feedback", "type"]
-        }
-      }
+    const promptText = proactiveCriticPolicy.getTaskInstruction({
+      documentTitle: document.title,
+      documentContext
     });
 
-    const responseText = response.text || "{}";
-    res.json(JSON.parse(responseText.trim()));
+    const schema = proactiveCriticPolicy.getResponseSchema();
+
+    const candidate = await providerRegistry.generateWithFallback({
+      persona,
+      taskPolicy: proactiveCriticPolicy,
+      taskType: proactiveCriticPolicy.taskType,
+      prompt: promptText,
+      contents: [{ text: promptText }],
+      systemInstruction: `${voicePrompt}\n\nAnalyze the document deeply. Be highly selective, poetic, and atmospheric. Return valid JSON adhering to the specified schema.`,
+      schema,
+      endpoint: '/api/proactive',
+      rawBody: req.body
+    }, "gemini-cloud");
+
+    if (candidate.parsed) {
+      return res.json(candidate.parsed);
+    }
+
+    try {
+      const parsedContent = JSON.parse(candidate.content.trim());
+      return res.json(parsedContent);
+    } catch (parseErr: any) {
+      const fallbackData = generateLocalFallback("/api/proactive", req.body, parseErr);
+      return res.json(fallbackData);
+    }
   } catch (error: any) {
-    console.error("Error in /api/proactive:", error);
+    console.error("Error in /api/proactive via ProviderRegistry:", error);
     try {
       const fallbackData = generateLocalFallback("/api/proactive", req.body, error);
       res.json(fallbackData);
@@ -559,46 +600,61 @@ app.post("/api/proactive", async (req, res) => {
   }
 });
 
-// 4. API Endpoint: Tarot Writing Reading
+// 4. API Endpoint: Tarot Writing Reading (routed through Sovereign ProviderRegistry + TarotReadingPolicy)
 app.post("/api/tarot", async (req, res) => {
   try {
-    const client = getAIClient();
     const { drawnCards, voice, documentContext, question } = req.body;
 
     const voicePrompt = getVoiceInstruction(voice);
+    const persona = personaRegistry.get(voice) || personaRegistry.get("guardian_oracle")!;
 
-    const cardsSummary = drawnCards.map((c: any) => 
-      `- ${c.card.name} (${c.isReversed ? 'Reversed' : 'Upright'}) in the "${c.positionLabel}" position.`
-    ).join("\n");
+    // Compile task instruction from TarotReadingPolicy (preserves domain input invariants)
+    const promptText = tarotReadingPolicy.getTaskInstruction({
+      drawnCards,
+      documentContext,
+      question
+    });
 
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: [
-        {
-          text: `The writer has drawn the following Tarot cards for creative guidance:\n${cardsSummary}\n\n` +
-                `Current writing project context (if any):\n"${documentContext || "Blank Canvas / Empty Page"}"\n\n` +
-                `The writer's question or focus: "${question || "Seeking inspiration for this creative writing journey."}"\n\n` +
-                `Provide a deep, mystical, highly atmospheric Tarot reading. Interweave the meanings of the cards directly with their writing process, blockages, and potential directions. Give them actionable, inspiring creative advice on how to integrate these cards' themes into their writing today.\n\n` +
-                `Respond with a JSON object containing "guidanceText" (string, beautifully formatted with markdown paragraphs and bullet points for the individual cards if appropriate).`
-          }
-        ],
-        config: {
-          systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON with a single 'guidanceText' string. Write with ultimate mystical flavor and literary depth.`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              guidanceText: { type: Type.STRING }
-            },
-            required: ["guidanceText"]
-          }
-        }
-      });
+    const schema = tarotReadingPolicy.getResponseSchema();
 
-    const responseText = response.text || "{}";
-    res.json(JSON.parse(responseText.trim()));
+    // Fingerprint immutable domain input evidence: cards, orientations, positions, question
+    const taskInputFingerprint = JSON.stringify({
+      cards: (drawnCards || []).map((c: any) => ({
+        name: c.card?.name,
+        isReversed: Boolean(c.isReversed),
+        positionLabel: c.positionLabel
+      })),
+      question: question || "",
+      contextSnippet: (documentContext || "").slice(0, 100)
+    });
+    const taskInputHash = hashString(taskInputFingerprint);
+
+    const candidate = await providerRegistry.generateWithFallback({
+      persona,
+      taskPolicy: tarotReadingPolicy,
+      taskType: tarotReadingPolicy.taskType,
+      taskInputHash,
+      prompt: promptText,
+      contents: [{ text: promptText }],
+      systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON with a single 'guidanceText' string. Write with ultimate mystical flavor and literary depth.`,
+      schema,
+      endpoint: '/api/tarot',
+      rawBody: req.body
+    }, "gemini-cloud");
+
+    if (candidate.parsed) {
+      return res.json(candidate.parsed);
+    }
+
+    try {
+      const parsedContent = JSON.parse(candidate.content.trim());
+      return res.json(parsedContent);
+    } catch (parseErr: any) {
+      const fallbackData = generateLocalFallback("/api/tarot", req.body, parseErr);
+      return res.json(fallbackData);
+    }
   } catch (error: any) {
-    console.error("Error in /api/tarot:", error);
+    console.error("Error in /api/tarot via ProviderRegistry:", error);
     try {
       const fallbackData = generateLocalFallback("/api/tarot", req.body, error);
       res.json(fallbackData);
@@ -608,56 +664,69 @@ app.post("/api/tarot", async (req, res) => {
   }
 });
 
-// 4.5. API Endpoint: Goetic & Ken x Cripps Demonic Spirit Channeling
+// 4.5. API Endpoint: Goetic & Ken x Cripps Demonic Spirit Channeling (routed through Sovereign ProviderRegistry + ChannelingPolicy + DomainContext)
 app.post("/api/channel", async (req, res) => {
   try {
-    const client = getAIClient();
     const { spiritName, spiritDetails, documentContext, userQuestion, voice } = req.body;
 
     const voicePrompt = getVoiceInstruction(voice);
+    const persona = personaRegistry.get(voice) || personaRegistry.get("guardian_oracle")!;
 
-    const promptText = `We are performing an invocation and channeling in the Ritual Space.
-The seeker wishes to channel the spirit: **${spiritName}**.
-Spiritual Details:
-- Office/Lore: ${spiritDetails.office || "Unknown Office / Ancient Mystery"}
-- Rank: ${spiritDetails.rank || "Vassal of the Pit / Sovereign Spark"}
-- Planetary Alignment: ${spiritDetails.planet || "Starless Abyss"}
-- Metal: ${spiritDetails.metal || "Smelted Brimstone"}
-- Tarot Relation: ${spiritDetails.tarot || "The Void"}
-
-Current Sacred Document / Chronicle Context:
-"${documentContext || "Blank Page / Fresh Bloodline Canvas"}"
-
-Seeker's Personal Intention/Question:
-"${userQuestion || "I request a direct transmission of your power, insight, and dark gnosis for my path."}"
-
-Provide a highly atmospheric, dark, poetic, and visceral channeling transmission. 
-Write from the perspective of the spirit ${spiritName} responding to the seeker, but colored and translated through the chosen voice medium: ${voice}.
-Weave in specific details of their writing/document and their question to make the prophecy extremely relevant and real.
-Your message should feel like a genuine, deep, mystical occult revelation. 
-
-Respond with a JSON object containing "channelingText" (string, formatted beautifully in markdown paragraphs or poetic verses).`;
-
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: [{ text: promptText }],
-      config: {
-        systemInstruction: `${voicePrompt}\n\nYou must return your output exclusively as a valid JSON object with a single 'channelingText' key. Speak with heavy, atmospheric, and unholy literary power.`,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            channelingText: { type: Type.STRING }
-          },
-          required: ["channelingText"]
-        }
-      }
+    // 1. Immutable DomainContext representation of authoritative spirit lore
+    // (Do not alter or mutate source lore/rank/numbering; preserve read-only fingerprint)
+    const domainContext = createDomainContext({
+      domain: (spiritDetails?.pantheon === 'egyptian') ? 'egyptian' : 'goetic',
+      subjectId: spiritDetails?.id ? String(spiritDetails.id) : (spiritName || "unknown_spirit").toLowerCase().replace(/\s+/g, "_"),
+      subjectName: spiritName || "Unknown Spirit",
+      sourceData: spiritDetails || {}
     });
 
-    const responseText = response.text || "{}";
-    res.json(JSON.parse(responseText.trim()));
+    // 2. Seeker task input fingerprinting (question, context snippet)
+    const taskInputFingerprint = JSON.stringify({
+      userQuestion: userQuestion || "",
+      contextSnippet: (documentContext || "").slice(0, 100),
+      voice: voice || "guardian_oracle"
+    });
+    const taskInputHash = hashString(taskInputFingerprint);
+
+    // 3. Compile task instruction from ChannelingPolicy
+    const promptText = channelingPolicy.getTaskInstruction({
+      spiritName,
+      spiritDetails,
+      documentContext,
+      userQuestion,
+      voice
+    });
+
+    const schema = channelingPolicy.getResponseSchema();
+
+    const candidate = await providerRegistry.generateWithFallback({
+      persona,
+      taskPolicy: channelingPolicy,
+      taskType: channelingPolicy.taskType,
+      taskInputHash,
+      domainContext,
+      prompt: promptText,
+      contents: [{ text: promptText }],
+      systemInstruction: `${voicePrompt}\n\nYou must return your output exclusively as a valid JSON object with a single 'channelingText' key. Speak with heavy, atmospheric, and unholy literary power.`,
+      schema,
+      endpoint: '/api/channel',
+      rawBody: req.body
+    }, "gemini-cloud");
+
+    if (candidate.parsed) {
+      return res.json(candidate.parsed);
+    }
+
+    try {
+      const parsedContent = JSON.parse(candidate.content.trim());
+      return res.json(parsedContent);
+    } catch (parseErr: any) {
+      const fallbackData = generateLocalFallback("/api/channel", req.body, parseErr);
+      return res.json(fallbackData);
+    }
   } catch (error: any) {
-    console.error("Error in /api/channel:", error);
+    console.error("Error in /api/channel via ProviderRegistry:", error);
     try {
       const fallbackData = generateLocalFallback("/api/channel", req.body, error);
       res.json(fallbackData);
