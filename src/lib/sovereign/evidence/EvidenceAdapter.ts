@@ -11,6 +11,13 @@ export interface CreateEvidenceParams {
   domainSubjectId?: string;
   domainSubjectName?: string;
   domainContextFingerprint?: string;
+  domainContexts?: readonly {
+    domain: string;
+    subjectId: string;
+    subjectName: string;
+    sourceFingerprint: string;
+  }[];
+  compositeDomainFingerprint?: string;
   providerTrustDomain?: string;
   executionMode?: 'deterministic' | 'runtime-cloud' | 'local-neural' | 'tee' | 'zkml';
   fidelityResult?: {
@@ -55,6 +62,8 @@ export class DeterministicEvidenceAdapter implements EvidenceAdapter {
       domainSubjectId: params.domainSubjectId,
       domainSubjectName: params.domainSubjectName,
       domainContextFingerprint: params.domainContextFingerprint,
+      domainContexts: params.domainContexts,
+      compositeDomainFingerprint: params.compositeDomainFingerprint,
       providerTrustDomain: params.providerTrustDomain,
       executionMode: params.executionMode || 'deterministic',
       fidelityResult: params.fidelityResult,
@@ -105,6 +114,8 @@ export class RuntimeAttestationAdapter implements EvidenceAdapter {
       domainSubjectId: params.domainSubjectId,
       domainSubjectName: params.domainSubjectName,
       domainContextFingerprint: params.domainContextFingerprint,
+      domainContexts: params.domainContexts,
+      compositeDomainFingerprint: params.compositeDomainFingerprint,
       providerTrustDomain: params.providerTrustDomain,
       executionMode: params.executionMode || 'runtime-cloud',
       fidelityResult: params.fidelityResult,

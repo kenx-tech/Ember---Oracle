@@ -11,7 +11,9 @@ import {
   proactiveCriticPolicy,
   tarotReadingPolicy,
   channelingPolicy,
+  runicConsultationPolicy,
   createDomainContext,
+  computeCompositeDomainFingerprint,
   hashString
 } from "./src/lib/sovereign";
 
@@ -736,53 +738,96 @@ app.post("/api/channel", async (req, res) => {
   }
 });
 
-// 4.6. API Endpoint: Norse Guardian's Draw Reading
+// 4.6. API Endpoint: Norse Guardian's Draw Reading (routed through Sovereign ProviderRegistry + RunicConsultationPolicy + composite DomainContexts)
 app.post("/api/norse", async (req, res) => {
   try {
-    const client = getAIClient();
     const { drawnRune, drawnGod, drawnRealm, drawnConcept, voice, documentContext, question } = req.body;
 
     const voicePrompt = getVoiceInstruction(voice);
+    const persona = personaRegistry.get(voice) || personaRegistry.get("guardian_oracle")!;
 
-    const alignmentSummary = 
-      `- **Rune Suit**: ${drawnRune?.name} (${drawnRune?.symbol}) - ${drawnRune?.literal}. Focus: ${drawnRune?.keywords?.join(', ')}.
-- **God Suit**: ${drawnGod?.name} (${drawnGod?.archetype}). Domains: ${drawnGod?.domains?.join(', ')}.
-- **Realm Suit**: ${drawnRealm?.name} (${drawnRealm?.archetype}). Context: ${drawnRealm?.description}.
-- **Concept Suit**: ${drawnConcept?.name} (${drawnConcept?.theme}). Lesson: ${drawnConcept?.description}.`;
+    // 1. Construct individual authoritative DomainContext objects for all four Norse domain inputs
+    const runeContext = createDomainContext({
+      domain: 'norse',
+      subjectId: drawnRune?.name ? `rune_${drawnRune.name.toLowerCase()}` : 'rune_perthro',
+      subjectName: drawnRune?.name || 'Perthro',
+      sourceData: drawnRune || {}
+    });
 
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: [
-        {
-          text: `The writer has drawn a Norse Guardian's Draw alignment for creative guidance:\n${alignmentSummary}\n\n` +
-                `Current writing project context (if any):\n"${documentContext || "Blank Canvas / Empty Page"}"\n\n` +
-                `The writer's question or focus: "${question || "Seeking inspiration for this creative writing journey."}"\n\n` +
-                `Provide a deep, highly atmospheric, Norse-inspired divinatory channeling and reading based on this alignment. Interweave the symbolic wisdom of the Rune, the God, the Realm, and the Concept directly with their writing process, potential plotlines, creative blocks, and sovereign trajectory.\n\n` +
-                `Structure the reading with:
-1. **The Cosmic Alignment**: A beautiful greeting/channeling in character based on the active translation conduit (${voice}) introducing the Norse forces.
-2. **The Four Norse Threads**: Analyze how the Rune, God, Realm, and Concept interlock to speak directly to their question and writing project.
-3. **Heroic Creative Decree**: Give them a direct, powerful, actionable writing decree and immediate creative prompt inspired by this draw.
+    const godContext = createDomainContext({
+      domain: 'norse',
+      subjectId: drawnGod?.name ? `god_${drawnGod.name.toLowerCase()}` : 'god_odin',
+      subjectName: drawnGod?.name || 'Odin',
+      sourceData: drawnGod || {}
+    });
 
-Respond with a JSON object containing "guidanceText" (string, beautifully formatted with markdown paragraphs and bold headers).`
-          }
-        ],
-        config: {
-          systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON with a single 'guidanceText' string. Write with supreme Norse mythological elegance, sagas-like authority, and deep atmospheric flavor.`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              guidanceText: { type: Type.STRING }
-            },
-            required: ["guidanceText"]
-          }
-        }
-      });
+    const realmContext = createDomainContext({
+      domain: 'norse',
+      subjectId: drawnRealm?.name ? `realm_${drawnRealm.name.toLowerCase()}` : 'realm_asgard',
+      subjectName: drawnRealm?.name || 'Asgard',
+      sourceData: drawnRealm || {}
+    });
 
-    const responseText = response.text || "{}";
-    res.json(JSON.parse(responseText.trim()));
+    const conceptContext = createDomainContext({
+      domain: 'norse',
+      subjectId: drawnConcept?.name ? `concept_${drawnConcept.name.toLowerCase()}` : 'concept_wyrd',
+      subjectName: drawnConcept?.name || 'Wyrd',
+      sourceData: drawnConcept || {}
+    });
+
+    const domainContexts = [runeContext, godContext, realmContext, conceptContext];
+    const compositeDomainFingerprint = computeCompositeDomainFingerprint(domainContexts);
+
+    // 2. Seeker task input fingerprinting (question, context snippet, voice)
+    const taskInputFingerprint = JSON.stringify({
+      question: question || "",
+      contextSnippet: (documentContext || "").slice(0, 100),
+      voice: voice || "guardian_oracle"
+    });
+    const taskInputHash = hashString(taskInputFingerprint);
+
+    // 3. Compile task instruction from RunicConsultationPolicy
+    const promptText = runicConsultationPolicy.getTaskInstruction({
+      drawnRune,
+      drawnGod,
+      drawnRealm,
+      drawnConcept,
+      voice,
+      documentContext,
+      question
+    });
+
+    const schema = runicConsultationPolicy.getResponseSchema();
+
+    const candidate = await providerRegistry.generateWithFallback({
+      persona,
+      taskPolicy: runicConsultationPolicy,
+      taskType: runicConsultationPolicy.taskType,
+      taskInputHash,
+      domainContext: runeContext, // primary for backward compatibility
+      domainContexts,            // composite array of all 4 independent domain contexts
+      compositeDomainFingerprint,
+      prompt: promptText,
+      contents: [{ text: promptText }],
+      systemInstruction: `${voicePrompt}\n\nYou must return your output as valid JSON with a single 'guidanceText' string. Write with supreme Norse mythological elegance, sagas-like authority, and deep atmospheric flavor.`,
+      schema,
+      endpoint: '/api/norse',
+      rawBody: req.body
+    }, "gemini-cloud");
+
+    if (candidate.parsed) {
+      return res.json(candidate.parsed);
+    }
+
+    try {
+      const parsedContent = JSON.parse(candidate.content.trim());
+      return res.json(parsedContent);
+    } catch (parseErr: any) {
+      const fallbackData = generateLocalFallback("/api/norse", req.body, parseErr);
+      return res.json(fallbackData);
+    }
   } catch (error: any) {
-    console.error("Error in /api/norse:", error);
+    console.error("Error in /api/norse via ProviderRegistry:", error);
     try {
       const fallbackData = generateLocalFallback("/api/norse", req.body, error);
       res.json(fallbackData);

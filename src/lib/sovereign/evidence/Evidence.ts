@@ -23,6 +23,13 @@ export interface EvidenceBundle {
   domainSubjectId?: string;
   domainSubjectName?: string;
   domainContextFingerprint?: string;
+  domainContexts?: readonly {
+    domain: string;
+    subjectId: string;
+    subjectName: string;
+    sourceFingerprint: string;
+  }[];
+  compositeDomainFingerprint?: string;
   providerTrustDomain?: string;
   executionMode?: 'deterministic' | 'runtime-cloud' | 'local-neural' | 'tee' | 'zkml';
   fidelityResult?: {

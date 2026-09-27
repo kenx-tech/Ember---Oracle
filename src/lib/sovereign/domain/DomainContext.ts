@@ -38,3 +38,13 @@ export function createDomainContext(params: {
     sourceFingerprint
   };
 }
+
+/**
+ * Computes a deterministic composite fingerprint across an ordered collection of DomainContexts.
+ * Preserves individual leaf fingerprints while providing an aggregate context fingerprint.
+ */
+export function computeCompositeDomainFingerprint(contexts: readonly DomainContext[]): string {
+  if (!contexts || contexts.length === 0) return "";
+  const orderedLeaves = contexts.map(c => `${c.domain}:${c.subjectId}:${c.sourceFingerprint}`).join("|");
+  return hashString(orderedLeaves);
+}

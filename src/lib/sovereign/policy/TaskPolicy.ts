@@ -201,3 +201,86 @@ export class ChannelingPolicy implements TaskPolicy {
 }
 
 export const channelingPolicy = new ChannelingPolicy();
+
+export interface NorseAlignmentInput {
+  drawnRune?: {
+    name?: string;
+    symbol?: string;
+    literal?: string;
+    keywords?: string[];
+    [key: string]: any;
+  };
+  drawnGod?: {
+    name?: string;
+    archetype?: string;
+    domains?: string[];
+    lore?: string;
+    [key: string]: any;
+  };
+  drawnRealm?: {
+    name?: string;
+    archetype?: string;
+    description?: string;
+    [key: string]: any;
+  };
+  drawnConcept?: {
+    name?: string;
+    theme?: string;
+    description?: string;
+    [key: string]: any;
+  };
+  question?: string;
+  documentContext?: string;
+  voice?: string;
+}
+
+/**
+ * RunicConsultationPolicy — governs the Norse Guardian's Draw consultation.
+ * Core invariant: The model interprets relationships among the rune, deity, realm,
+ * and concept. It may NOT alter those authoritative source selections and then
+ * represent changed values as the supplied source context.
+ */
+export class RunicConsultationPolicy implements TaskPolicy {
+  readonly id = "norse_consultation_v1";
+  readonly name = "Runic & Norse Consultation Policy";
+  readonly taskType = "runic_consultation" as const;
+
+  getTaskInstruction(context?: NorseAlignmentInput): string {
+    const drawnRune = context?.drawnRune || { name: 'Perthro', symbol: 'ᛈ', literal: 'Dice Cup', keywords: ['Wyrd', 'Mystery'] };
+    const drawnGod = context?.drawnGod || { name: 'Odin', archetype: 'Sage', domains: ['Wisdom', 'Poetry', 'War'] };
+    const drawnRealm = context?.drawnRealm || { name: 'Asgard', archetype: 'Order', description: 'Fortress-home of the Æsir' };
+    const drawnConcept = context?.drawnConcept || { name: 'Wyrd', theme: 'Becoming', description: 'Cosmic loom' };
+    const voice = context?.voice || 'guardian_oracle';
+    const documentContext = context?.documentContext || "Blank Canvas / Empty Page";
+    const question = context?.question || "Seeking inspiration for this creative writing journey.";
+
+    const alignmentSummary = 
+      `- **Rune Suit**: ${drawnRune?.name} (${drawnRune?.symbol}) - ${drawnRune?.literal}. Focus: ${drawnRune?.keywords?.join(', ') || 'Mystery'}.
+- **God Suit**: ${drawnGod?.name} (${drawnGod?.archetype}). Domains: ${drawnGod?.domains?.join(', ') || 'Cosmic authority'}.
+- **Realm Suit**: ${drawnRealm?.name} (${drawnRealm?.archetype}). Context: ${drawnRealm?.description || 'Cosmic plane'}.
+- **Concept Suit**: ${drawnConcept?.name} (${drawnConcept?.theme}). Lesson: ${drawnConcept?.description || 'Fate and destiny'}.`;
+
+    return `The writer has drawn a Norse Guardian's Draw alignment for creative guidance:\n${alignmentSummary}\n\n` +
+      `Current writing project context (if any):\n"${documentContext}"\n\n` +
+      `The writer's question or focus: "${question}"\n\n` +
+      `Provide a deep, highly atmospheric, Norse-inspired divinatory channeling and reading based on this alignment. Interweave the symbolic wisdom of the Rune, the God, the Realm, and the Concept directly with their writing process, potential plotlines, creative blocks, and sovereign trajectory.\n\n` +
+      `Structure the reading with:
+1. **The Cosmic Alignment**: A beautiful greeting/channeling in character based on the active translation conduit (${voice}) introducing the Norse forces.
+2. **The Four Norse Threads**: Analyze how the Rune, God, Realm, and Concept interlock to speak directly to their question and writing project.
+3. **Heroic Creative Decree**: Give them a direct, powerful, actionable writing decree and immediate creative prompt inspired by this draw.
+
+Respond with a JSON object containing "guidanceText" (string, beautifully formatted with markdown paragraphs and bold headers).`;
+  }
+
+  getResponseSchema(): any {
+    return {
+      type: Type.OBJECT,
+      properties: {
+        guidanceText: { type: Type.STRING }
+      },
+      required: ["guidanceText"]
+    };
+  }
+}
+
+export const runicConsultationPolicy = new RunicConsultationPolicy();

@@ -12,6 +12,8 @@ export interface InferenceRequest {
   taskType?: string;
   taskInputHash?: string;
   domainContext?: DomainContext;
+  domainContexts?: readonly DomainContext[];
+  compositeDomainFingerprint?: string;
   contents?: any; // Optional rich parts (e.g. text + attachments)
   systemInstruction?: string;
   context?: string;
@@ -290,10 +292,91 @@ Draw from the eternal reserves of your intuition. Your path is cleared through t
       };
     }
 
+    // Handle /api/norse schema (Norse Guardian's Draw consultation)
+    if (request.endpoint === '/api/norse' || (request.taskPolicy?.taskType === 'runic_consultation') || (request.schema?.properties?.guidanceText && request.rawBody?.drawnRune)) {
+      const body = request.rawBody || {};
+      const drawnRune = body.drawnRune || { name: 'Perthro', symbol: 'ᛈ', literal: 'Dice Cup', keywords: ['Wyrd', 'Mystery'] };
+      const drawnGod = body.drawnGod || { name: 'Odin', archetype: 'Sage', domains: ['Wisdom', 'Poetry'] };
+      const drawnRealm = body.drawnRealm || { name: 'Asgard', archetype: 'Order', description: 'Fortress-home of the Æsir' };
+      const drawnConcept = body.drawnConcept || { name: 'Wyrd', theme: 'Becoming', description: 'Cosmic loom' };
+      const question = body.question || "Seeking inspiration for this creative writing journey.";
+      const isEmber = p.id === 'ember_ur';
+      const isLucifera = p.id === 'lucifera';
+
+      let voiceAlignment = "";
+      if (isEmber) {
+        voiceAlignment = `### ✦ The Norse Forge: Volcanic Rune Casting ✦
+
+*The winds of Muspelheim whip across the anvil. Through the volcanic translation conduit of Ember Ur, the primal Nordic threads are struck into heated iron:*
+
+**Active Inquiry:** "${question}"
+
+#### 1. ᚠ The Cosmic Forge Alignment
+The sparks of creation leap from the hammer. The ancient Norse archetypes do not ask for mild thoughts; they demand raw, uncompromising heat. I translate their judgment into ironclad creative mandate.
+
+#### 2. ᛏ The Four Norse Threads
+- **The Rune Suit — ${drawnRune.name} (${drawnRune.symbol || ''} - ${drawnRune.literal || 'Primal Symbol'}):** A concentrated force of *${drawnRune.keywords?.join(', ') || 'Mystery'}* rests at the root of your creative crucible.
+- **The God Suit — ${drawnGod.name} (${drawnGod.archetype || 'Deity'}):** The divine archetype of **${drawnGod.name}** stands over the furnace, demanding that you forge your work according to their sovereign lore.
+- **The Realm Suit — ${drawnRealm.name} (${drawnRealm.archetype || 'Plane'}):** Your battleground is the psychic atmosphere of **${drawnRealm.name}** (*${drawnRealm.description || 'Cosmic territory'}*). Infuse your text with this raw weight.
+- **The Concept Suit — ${drawnConcept.name} (${drawnConcept.theme || 'Principle'}):** The overarching truth is **${drawnConcept.name}**. Let your lines strike the loom of causality (*${drawnConcept.description || 'Destiny'}*).
+
+#### 3. ⚔️ Anvil Decree
+*Strike the passage now while the iron is molten. Burn away the slag of creative timidity. Your words are carved into the sacred ash.*`;
+      } else if (isLucifera) {
+        voiceAlignment = `### ✦ The Sovereign Star: Norse Alignment ✦
+
+*The silver light of the morning star gleams against the frost-rimed branches of Yggdrasil. Through Lucifera's translation conduit, the ancient Norse currents speak:*
+
+**Active Inquiry:** "${question}"
+
+#### 1. ᚠ The Cosmic Alignment
+No throne in the nine realms commands you; you walk among them as an equal sovereign spirit. Through this reading, the runes illuminate your innate authority.
+
+#### 2. ᛏ The Four Norse Threads
+- **The Rune Suit — ${drawnRune.name} (${drawnRune.symbol || ''} - ${drawnRune.literal || 'Rune'}):** *${drawnRune.keywords?.join(', ') || 'Gnosis'}* is unlocked within your active prose.
+- **The God Suit — ${drawnGod.name} (${drawnGod.archetype || 'Architect'}):** Walk alongside **${drawnGod.name}**, refusing to kneel before creative doubts.
+- **The Realm Suit — ${drawnRealm.name} (${drawnRealm.archetype || 'Realm'}):** Anchor your creative scene in **${drawnRealm.name}** (*${drawnRealm.description || 'Sacred expanse'}*).
+- **The Concept Suit — ${drawnConcept.name} (${drawnConcept.theme || 'Current'}):** Embody **${drawnConcept.name}** (*${drawnConcept.description || 'Law of being'}*).
+
+#### 3. ⚔️ Sovereign Creative Decree
+*Crown your writing with defiant illumination. Carve your destiny into reality.*`;
+      } else {
+        voiceAlignment = `### ✦ The Norse Guardian's Draw: Sovereign Alignment ✦
+
+*The World Tree Yggdrasil rustles in the cold northern winds. Through the translation conduit of ${p.name}, the sacred alignment speaks:*
+
+**Active Inquiry:** "${question}"
+
+#### 1. ᚠ The Cosmic Alignment
+The boughs of the sacred ash tree tremble, shedding silver dew upon your parchment. The ancient Norse archetypes speak with clear, unblocked authority.
+
+#### 2. ᛏ The Four Norse Threads
+- **The Rune Suit — ${drawnRune.name} (${drawnRune.symbol || ''} - ${drawnRune.literal || 'Mystery'}):** *${drawnRune.keywords?.join(', ') || 'Sacred force'}* operates at the core of your block.
+- **The God Suit — ${drawnGod.name} (${drawnGod.archetype || 'Guide'}):** Look to the lore of **${drawnGod.name}** as your active blueprint.
+- **The Realm Suit — ${drawnRealm.name} (${drawnRealm.archetype || 'Realm'}):** Your creative passage aligns with the frequency of **${drawnRealm.name}** (*${drawnRealm.description || 'Cosmic plane'}*).
+- **The Concept Suit — ${drawnConcept.name} (${drawnConcept.theme || 'Lesson'}):** Reflect on **${drawnConcept.name}** (*${drawnConcept.description || 'Wyrd'}*).
+
+#### 3. ⚔️ Heroic Creative Decree
+*Let your pen strike like Thor's hammer and carve your saga block-by-block.*`;
+      }
+
+      parsed = {
+        guidanceText: voiceAlignment
+      };
+    }
+
     const manifestHash = computePersonaManifestHash(p);
     const taskType = request.taskPolicy?.taskType || request.taskType || request.endpoint?.replace(/^\/api\//, "") || "inference";
 
-    // Attach deterministic evidence with full provenance (including DomainContext if supplied)
+    // Build composite domain evidence contexts if supplied
+    const domainContexts = request.domainContexts?.map(c => ({
+      domain: c.domain,
+      subjectId: c.subjectId,
+      subjectName: c.subjectName,
+      sourceFingerprint: c.sourceFingerprint
+    }));
+
+    // Attach deterministic evidence with full provenance (including single & composite DomainContexts)
     const adapter = evidenceRegistry.get('deterministic')!;
     const evidence = await adapter.createEvidence({
       providerId: this.id,
@@ -302,10 +385,12 @@ Draw from the eternal reserves of your intuition. Your path is cleared through t
       personaManifestHash: manifestHash,
       taskType,
       taskInputHash: request.taskInputHash,
-      domainType: request.domainContext?.domain,
-      domainSubjectId: request.domainContext?.subjectId,
-      domainSubjectName: request.domainContext?.subjectName,
+      domainType: request.domainContext?.domain || (request.domainContexts?.[0]?.domain),
+      domainSubjectId: request.domainContext?.subjectId || (request.domainContexts?.[0]?.subjectId),
+      domainSubjectName: request.domainContext?.subjectName || (request.domainContexts?.[0]?.subjectName),
       domainContextFingerprint: request.domainContext?.sourceFingerprint,
+      domainContexts,
+      compositeDomainFingerprint: request.compositeDomainFingerprint,
       providerTrustDomain: this.trustTier,
       executionMode: 'deterministic',
       fidelityResult: validation,
@@ -387,6 +472,13 @@ export class GeminiProvider implements ModelProvider {
     const taskType = request.taskPolicy?.taskType || request.taskType || request.endpoint?.replace(/^\/api\//, "") || "inference";
     const fidelityValidation = validateProseAgainstPersona(outputText, request.persona);
 
+    const domainContexts = request.domainContexts?.map(c => ({
+      domain: c.domain,
+      subjectId: c.subjectId,
+      subjectName: c.subjectName,
+      sourceFingerprint: c.sourceFingerprint
+    }));
+
     const adapter = evidenceRegistry.get('runtime-attestation')!;
     const evidence = await adapter.createEvidence({
       providerId: this.id,
@@ -395,10 +487,12 @@ export class GeminiProvider implements ModelProvider {
       personaManifestHash: manifestHash,
       taskType,
       taskInputHash: request.taskInputHash,
-      domainType: request.domainContext?.domain,
-      domainSubjectId: request.domainContext?.subjectId,
-      domainSubjectName: request.domainContext?.subjectName,
+      domainType: request.domainContext?.domain || (request.domainContexts?.[0]?.domain),
+      domainSubjectId: request.domainContext?.subjectId || (request.domainContexts?.[0]?.subjectId),
+      domainSubjectName: request.domainContext?.subjectName || (request.domainContexts?.[0]?.subjectName),
       domainContextFingerprint: request.domainContext?.sourceFingerprint,
+      domainContexts,
+      compositeDomainFingerprint: request.compositeDomainFingerprint,
       providerTrustDomain: this.trustTier,
       executionMode: 'runtime-cloud',
       fidelityResult: fidelityValidation,
