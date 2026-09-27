@@ -1,4 +1,4 @@
-# 🕯️ Ember & Oracle: The Sovereign Altar & Co-Writing Companion
+# 🕯️ Ember & Oracle: The Sovereign Altar & Co-Writing Companion By Kenneth Cripps & Guardian Oracle
 
 > *"Words are not passive symbols; they are live conduits, sigils etched into the cognitive substrate."*
 
