@@ -14,7 +14,8 @@ import {
   Compass,
   Skull,
   Heart,
-  Crown
+  Crown,
+  Trash2
 } from 'lucide-react';
 import { DocumentState, FileAttachment, VoiceType, AIHistoryItem, DocumentSection, TierType, SeekerUser } from './types';
 import ChronicleCanvas from './components/ChronicleCanvas';
@@ -30,7 +31,7 @@ import GoogleAuthModal from './components/GoogleAuthModal';
 import { spendAltarCharge, getAltarConfigTier, isSuperAdmin } from './altarStore';
 import AltarDepletedModal from './components/AltarDepletedModal';
 import { generateText } from './api';
-import { getSafeLocalStorage, setSafeStorage, safeJsonParse } from './storageHelper';
+import { getSafeLocalStorage, setSafeStorage, safeJsonParse, clearAppCache } from './storageHelper';
 
 const STORAGE_KEY = 'ember_oracle_document_v1';
 const HISTORY_KEY = 'ember_oracle_history_v1';
@@ -103,6 +104,21 @@ export default function App() {
 
   const [ritualCounts, setRitualCounts] = useState<{ [key: string]: number }>({});
   const [passengerMaxPhase, setPassengerMaxPhase] = useState<number>(0);
+  const [cacheNotice, setCacheNotice] = useState<string | null>(null);
+
+  const handleClearCache = () => {
+    if (window.confirm("Purge application cache, altar charges, and stored local artifacts?")) {
+      clearAppCache();
+      setUser(null);
+      setDocumentState(INITIAL_DOC);
+      setHistory([]);
+      setTier('free');
+      setRitualCounts({});
+      setPassengerMaxPhase(0);
+      setCacheNotice("Application Cache & Altar Memory Cleared");
+      setTimeout(() => setCacheNotice(null), 3500);
+    }
+  };
 
   const loadRankData = () => {
     const userId = user?.uid || 'guest';
@@ -461,7 +477,14 @@ export default function App() {
                     </span>
                   )}
                 </div>
-                <span className="text-[8px] text-white/40 leading-none truncate max-w-[85px]">{user.email}</span>
+                <div className="flex items-center gap-1.5 leading-none">
+                  <span className="text-[8px] text-white/40 truncate max-w-[85px]">{user.email}</span>
+                  {user.phoneNumber && (
+                    <span className="text-[7.5px] font-mono text-myth-gold/70 truncate max-w-[70px]" title={user.phoneNumber}>
+                      {user.phoneNumber}
+                    </span>
+                  )}
+                </div>
               </div>
               <button
                 onClick={() => setUser(null)}
@@ -516,11 +539,21 @@ export default function App() {
           {/* Default Restore trigger */}
           <button
             onClick={handleResetToDefault}
-            className="flex items-center gap-1.5 bg-[#0f0c15] hover:bg-myth-slate border border-myth-slate/80 text-gray-400 hover:text-gray-200 text-xs px-3 py-1.5 rounded-xl transition-all"
+            className="flex items-center gap-1.5 bg-[#0f0c15] hover:bg-myth-slate border border-myth-slate/80 text-gray-400 hover:text-gray-200 text-xs px-3 py-1.5 rounded-xl transition-all cursor-pointer"
             title="Reset chronicle to tutorial template"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Reset Tutorial</span>
+          </button>
+
+          {/* Clear Cache Trigger */}
+          <button
+            onClick={handleClearCache}
+            className="flex items-center gap-1.5 bg-[#0f0c15] hover:bg-red-950/20 border border-myth-slate/80 hover:border-red-500/30 text-gray-400 hover:text-red-300 text-xs px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+            title="Purge local application cache, sessions & altar data"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Clear Cache</span>
           </button>
 
           {/* Distraction free toggle */}
@@ -713,6 +746,21 @@ export default function App() {
         actionKey={altarActionForModal}
         onNavigateToTiers={() => setCurrentTab('tiers')}
       />
+
+      {/* Cache notification banner */}
+      <AnimatePresence>
+        {cacheNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 right-6 z-50 bg-[#0d0d12]/95 border border-emerald-500/40 text-emerald-400 px-4 py-2.5 rounded-xl text-xs font-mono shadow-2xl flex items-center gap-2 backdrop-blur-md"
+          >
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <span className="font-semibold">{cacheNotice}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

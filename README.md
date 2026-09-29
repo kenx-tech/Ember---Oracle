@@ -99,6 +99,21 @@
 
 ---
 
+### 9. 🔐 Google Authentication Node, Phone & Protected Super Admin
+- **Client-Side Google Auth Bridge**:
+  - Seamlessly handles Google identity login in client sandboxes without redirect latency.
+  - **Email & Phone Contact Support**: Capture and display seeker Google email and contact phone numbers directly in the top sanctuary status ribbon.
+- **PIN-Secured Super Admin (Ken Elder / `kenx@guardianoracle.com`)**:
+  - Root developer privileges (unlimited Altar energy, zero invocation costs, instant ignition charge, and automatic Sovereign tier promotion).
+  - **Security PIN Enforcement**: To prevent unauthorized users or visitors from casually claiming Ken Elder's identity, clicking Ken's profile requires entering the **Super Admin Security PIN** (Default Master PIN: `7777`).
+  - Custom login attempts claiming Ken's email address are likewise routed through the PIN verification gate.
+- **1-Click Guest Seeker Account**:
+  - Allows public evaluators and friends to log in instantly as a Neophyte Seeker without bypassing altar mechanics.
+- **Purge & Reset System (`Clear Cache`)**:
+  - Top header includes both **Reset Tutorial** (restores default chronicle manuscript) and **Clear Cache** (safely purges localStorage, clears cached altar states, clears sessions, and restores baseline sanctuary memory).
+
+---
+
 ## 🛠️ Tech Stack & Architecture
 
 - **Frontend**:

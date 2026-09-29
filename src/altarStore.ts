@@ -46,7 +46,7 @@ export function getAltarConfigTier(tier: TierType): AltarTierKey {
 
 export function isSuperAdmin(userId?: string): boolean {
   if (typeof window === 'undefined') return false;
-  if (userId && (userId === 'kenx@guardianoracle.com' || userId.toLowerCase().includes('kenx@') || userId === 'superadmin')) {
+  if (userId && (userId === 'kenx@guardianoracle.com' || userId === 'google-preset-101' || userId.toLowerCase().includes('kenx@') || userId === 'superadmin')) {
     return true;
   }
   try {

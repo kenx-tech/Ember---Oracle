@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, User, ShieldAlert, LogIn, Check, X, ShieldCheck } from 'lucide-react';
+import { Mail, User, ShieldAlert, LogIn, X, ShieldCheck, Phone, KeyRound, ArrowLeft, Shield } from 'lucide-react';
 import { SeekerUser } from '../types';
 
 interface GoogleAuthModalProps {
@@ -10,27 +10,86 @@ interface GoogleAuthModalProps {
 }
 
 export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAuthModalProps) {
-  const [useCustomAccount, setUseCustomAccount] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'custom' | 'pin'>('list');
   const [customName, setCustomName] = useState('');
   const [customEmail, setCustomEmail] = useState('');
+  const [customPhone, setCustomPhone] = useState('');
+  const [adminPin, setAdminPin] = useState('');
+  const [pendingUser, setPendingUser] = useState<SeekerUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const PRESET_USER: SeekerUser = {
+  const KEN_SUPERADMIN_USER: SeekerUser = {
     uid: 'google-preset-101',
     name: 'Ken Elder',
     email: 'kenx@guardianoracle.com',
+    phoneNumber: '+1 (555) 728-4392',
     photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
   };
 
-  const handleSelectPreset = () => {
+  const DEMO_GUEST_USER: SeekerUser = {
+    uid: 'google-guest-102',
+    name: 'Guest Seeker',
+    email: 'seeker@emberoracle.app',
+    phoneNumber: '+1 (555) 019-3382',
+    photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80'
+  };
+
+  const resetModalState = () => {
+    setViewMode('list');
+    setCustomName('');
+    setCustomEmail('');
+    setCustomPhone('');
+    setAdminPin('');
+    setPendingUser(null);
+    setIsLoading(false);
+    setErrorMsg('');
+  };
+
+  const handleClose = () => {
+    if (isLoading) return;
+    resetModalState();
+    onClose();
+  };
+
+  const handleSelectKenAdmin = () => {
+    setErrorMsg('');
+    setPendingUser(KEN_SUPERADMIN_USER);
+    setViewMode('pin');
+  };
+
+  const handleSelectDemoGuest = () => {
     setIsLoading(true);
     setErrorMsg('');
     setTimeout(() => {
       setIsLoading(false);
-      onSignIn(PRESET_USER);
-      onClose();
-    }, 1500);
+      onSignIn(DEMO_GUEST_USER);
+      handleClose();
+    }, 800);
+  };
+
+  const handleVerifyPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminPin) {
+      setErrorMsg('Please enter the Super Admin Security Key.');
+      return;
+    }
+
+    const cleanPin = adminPin.trim().toLowerCase();
+    // Ken's master PINs
+    if (cleanPin === '7777' || cleanPin === 'kenx' || cleanPin === 'superadmin' || cleanPin === 'oracle77') {
+      setIsLoading(true);
+      setErrorMsg('');
+      setTimeout(() => {
+        setIsLoading(false);
+        if (pendingUser) {
+          onSignIn(pendingUser);
+        }
+        handleClose();
+      }, 900);
+    } else {
+      setErrorMsg('Invalid Security Key. Unauthorized access to Super Admin identity denied.');
+    }
   };
 
   const handleSubmitCustom = (e: React.FormEvent) => {
@@ -44,19 +103,31 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
       return;
     }
 
+    const trimmedEmail = customEmail.trim().toLowerCase();
+    const newUser: SeekerUser = {
+      uid: `google-custom-${Date.now()}`,
+      name: customName.trim(),
+      email: customEmail.trim(),
+      phoneNumber: customPhone.trim() || undefined,
+      photoUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(customName)}`
+    };
+
+    // If anyone attempts to enter Ken's email in the custom form, enforce PIN check
+    if (trimmedEmail === 'kenx@guardianoracle.com' || trimmedEmail.includes('kenx@')) {
+      setPendingUser(newUser);
+      setViewMode('pin');
+      setErrorMsg('');
+      return;
+    }
+
     setIsLoading(true);
     setErrorMsg('');
 
     setTimeout(() => {
       setIsLoading(false);
-      onSignIn({
-        uid: `google-custom-${Date.now()}`,
-        name: customName,
-        email: customEmail,
-        photoUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(customName)}`
-      });
-      onClose();
-    }, 1800);
+      onSignIn(newUser);
+      handleClose();
+    }, 1000);
   };
 
   if (!isOpen) return null;
@@ -64,7 +135,7 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
       {/* Background shadow click to close */}
-      <div className="absolute inset-0 cursor-pointer" onClick={() => !isLoading && onClose()} />
+      <div className="absolute inset-0 cursor-pointer" onClick={handleClose} />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -75,7 +146,7 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
         {/* Close Button */}
         {!isLoading && (
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
@@ -106,14 +177,16 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
             <span className="text-[10px] uppercase font-bold tracking-widest text-white/80">Google Auth Node</span>
           </div>
           <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[8px] font-bold uppercase px-2 py-0.5 rounded-full">
-            Local Sandbox Mode
+            Client-Side Handshake
           </div>
         </div>
 
         {/* Content */}
         <div className="p-6 md:p-8 space-y-6">
           <div className="text-center space-y-1.5">
-            <h3 className="text-lg font-serif font-bold text-white uppercase tracking-wider">Choose an Account</h3>
+            <h3 className="text-lg font-serif font-bold text-white uppercase tracking-wider">
+              {viewMode === 'pin' ? 'Root Authentication' : 'Choose an Account'}
+            </h3>
             <p className="text-xs text-white/50 font-sans">
               to continue to <span className="text-myth-gold font-bold">Ember & Oracle</span>
             </p>
@@ -140,11 +213,71 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
                   <div className="absolute inset-0 border-2 border-t-myth-gold rounded-full animate-spin" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-bold text-white uppercase tracking-wider">Resolving Auth Token...</p>
-                  <p className="text-[10px] text-white/40">Aligning credentials in local sandbox sandbox</p>
+                  <p className="text-xs font-bold text-white uppercase tracking-wider">Resolving Auth Credentials...</p>
+                  <p className="text-[10px] text-white/40">Securing session tokens in local client sanctuary</p>
                 </div>
               </motion.div>
-            ) : !useCustomAccount ? (
+            ) : viewMode === 'pin' ? (
+              <motion.form
+                key="pin-form"
+                onSubmit={handleVerifyPin}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="space-y-5"
+              >
+                <div className="bg-amber-950/20 border border-amber-500/20 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                    <Shield className="w-4 h-4 text-amber-400" />
+                    <span>Super Admin Key Required</span>
+                  </div>
+                  <p className="text-[11px] text-white/70 font-sans leading-relaxed">
+                    <strong className="text-white">Ken Elder</strong> holds Root Super Admin privileges (unlimited Altar charges & sovereign tier). Enter the Altar Security PIN to unlock.
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[9px] uppercase tracking-wider text-white/50 block">Super Admin Security PIN</label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      value={adminPin}
+                      onChange={(e) => setAdminPin(e.target.value)}
+                      placeholder="Enter PIN (Default Master: 7777)"
+                      className="w-full bg-black/60 border border-amber-500/40 px-3.5 py-2.5 pl-10 rounded-xl text-xs outline-none focus:border-amber-400 transition-colors text-white font-mono tracking-widest"
+                      autoFocus
+                    />
+                    <KeyRound className="w-3.5 h-3.5 text-amber-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                  <div className="flex justify-between text-[8px] text-white/30 pt-1 font-mono">
+                    <span>Identity: kenx@guardianoracle.com</span>
+                    <span>Master PIN: 7777</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode('list');
+                      setErrorMsg('');
+                      setAdminPin('');
+                    }}
+                    className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-400 hover:to-red-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Unlock Root</span>
+                  </button>
+                </div>
+              </motion.form>
+            ) : viewMode === 'list' ? (
               <motion.div
                 key="accounts-list"
                 initial={{ opacity: 0, x: -10 }}
@@ -152,15 +285,43 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
                 exit={{ opacity: 0, x: 10 }}
                 className="space-y-3"
               >
-                {/* Preset Account Card */}
+                {/* Ken Elder (Super Admin with PIN prompt) */}
                 <button
-                  onClick={handleSelectPreset}
-                  className="w-full p-4 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 rounded-2xl text-left transition-all flex items-center gap-4 group cursor-pointer"
+                  onClick={handleSelectKenAdmin}
+                  className="w-full p-3.5 bg-white/[0.02] hover:bg-amber-950/20 border border-amber-500/20 hover:border-amber-500/40 rounded-2xl text-left transition-all flex items-center gap-3.5 group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-full overflow-hidden border border-amber-400/40 bg-black/40 flex-shrink-0 relative">
+                    <img
+                      src={KEN_SUPERADMIN_USER.photoUrl}
+                      alt={KEN_SUPERADMIN_USER.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors truncate">
+                        {KEN_SUPERADMIN_USER.name}
+                      </p>
+                      <span className="text-[7.5px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono font-bold tracking-wider">
+                        ⚡ SUPER ADMIN
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-white/40 truncate">{KEN_SUPERADMIN_USER.email}</p>
+                    <p className="text-[8px] text-myth-gold/60 font-mono truncate">{KEN_SUPERADMIN_USER.phoneNumber} • PIN Protected</p>
+                  </div>
+                  <KeyRound className="w-4 h-4 text-amber-400/50 group-hover:text-amber-400 group-hover:scale-110 transition-all flex-shrink-0" />
+                </button>
+
+                {/* Guest / Visitor Seeker */}
+                <button
+                  onClick={handleSelectDemoGuest}
+                  className="w-full p-3.5 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 rounded-2xl text-left transition-all flex items-center gap-3.5 group cursor-pointer"
                 >
                   <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-black/40 flex-shrink-0">
                     <img
-                      src={PRESET_USER.photoUrl}
-                      alt={PRESET_USER.name}
+                      src={DEMO_GUEST_USER.photoUrl}
+                      alt={DEMO_GUEST_USER.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform"
                       referrerPolicy="no-referrer"
                     />
@@ -168,24 +329,28 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-xs font-bold text-white group-hover:text-myth-gold transition-colors truncate">
-                        {PRESET_USER.name}
+                        {DEMO_GUEST_USER.name}
                       </p>
-                      <span className="text-[8px] bg-myth-gold/10 text-myth-gold border border-myth-gold/20 px-1.5 py-0.2 rounded font-mono font-normal">
-                        Pre-filled
+                      <span className="text-[7.5px] bg-white/10 text-white/50 border border-white/10 px-1.5 py-0.2 rounded font-mono">
+                        Guest Seeker
                       </span>
                     </div>
-                    <p className="text-[10px] text-white/40 truncate">{PRESET_USER.email}</p>
+                    <p className="text-[10px] text-white/40 truncate">{DEMO_GUEST_USER.email}</p>
+                    <p className="text-[8px] text-white/30 font-mono truncate">{DEMO_GUEST_USER.phoneNumber} • Instant Demo</p>
                   </div>
                   <LogIn className="w-4 h-4 text-white/30 group-hover:text-myth-gold group-hover:translate-x-1 transition-all flex-shrink-0" />
                 </button>
 
-                {/* Add new account button */}
+                {/* Add Custom Google Account button */}
                 <button
-                  onClick={() => setUseCustomAccount(true)}
-                  className="w-full p-3.5 bg-black/40 hover:bg-white/[0.02] border border-dashed border-white/5 hover:border-white/10 rounded-2xl text-xs text-center text-white/60 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2"
+                  onClick={() => {
+                    setViewMode('custom');
+                    setErrorMsg('');
+                  }}
+                  className="w-full p-3 bg-black/40 hover:bg-white/[0.02] border border-dashed border-white/10 hover:border-white/20 rounded-2xl text-xs text-center text-white/60 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <User className="w-4 h-4 text-white/40" />
-                  <span>Use another account</span>
+                  <User className="w-3.5 h-3.5 text-white/40" />
+                  <span>Sign in with another Google account</span>
                 </button>
               </motion.div>
             ) : (
@@ -195,21 +360,21 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="space-y-4"
+                className="space-y-3.5"
               >
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <div className="space-y-1">
-                    <label className="text-[9px] uppercase tracking-wider text-white/40 block">Your Full Name</label>
+                    <label className="text-[9px] uppercase tracking-wider text-white/40 block">Full Name</label>
                     <div className="relative">
                       <input
                         type="text"
                         value={customName}
                         onChange={(e) => setCustomName(e.target.value)}
-                        placeholder="John Doe"
-                        className="w-full bg-black/50 border border-white/10 px-3.5 py-2.5 pl-10 rounded-xl text-xs outline-none focus:border-myth-gold transition-colors text-white"
+                        placeholder="E.g. Elena Rostova"
+                        className="w-full bg-black/50 border border-white/10 px-3.5 py-2 pl-9 rounded-xl text-xs outline-none focus:border-myth-gold transition-colors text-white"
                         autoFocus
                       />
-                      <User className="w-3.5 h-3.5 text-white/30 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <User className="w-3.5 h-3.5 text-white/30 absolute left-3 top-1/2 -translate-y-1/2" />
                     </div>
                   </div>
 
@@ -220,10 +385,27 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
                         type="email"
                         value={customEmail}
                         onChange={(e) => setCustomEmail(e.target.value)}
-                        placeholder="john.doe@gmail.com"
-                        className="w-full bg-black/50 border border-white/10 px-3.5 py-2.5 pl-10 rounded-xl text-xs outline-none focus:border-myth-gold transition-colors text-white font-sans"
+                        placeholder="elena.rostova@gmail.com"
+                        className="w-full bg-black/50 border border-white/10 px-3.5 py-2 pl-9 rounded-xl text-xs outline-none focus:border-myth-gold transition-colors text-white font-sans"
                       />
-                      <Mail className="w-3.5 h-3.5 text-white/30 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <Mail className="w-3.5 h-3.5 text-white/30 absolute left-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <label className="text-[9px] uppercase tracking-wider text-white/40 block">Phone Number</label>
+                      <span className="text-[8px] text-white/30 uppercase">Optional</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        value={customPhone}
+                        onChange={(e) => setCustomPhone(e.target.value)}
+                        placeholder="+1 (555) 234-5678"
+                        className="w-full bg-black/50 border border-white/10 px-3.5 py-2 pl-9 rounded-xl text-xs outline-none focus:border-myth-gold transition-colors text-white font-mono"
+                      />
+                      <Phone className="w-3.5 h-3.5 text-white/30 absolute left-3 top-1/2 -translate-y-1/2" />
                     </div>
                   </div>
                 </div>
@@ -232,16 +414,16 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
                   <button
                     type="button"
                     onClick={() => {
-                      setUseCustomAccount(false);
+                      setViewMode('list');
                       setErrorMsg('');
                     }}
-                    className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                    className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                   >
                     Back
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-3 bg-myth-gold hover:bg-amber-500 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    className="flex-1 py-2.5 bg-myth-gold hover:bg-amber-500 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <LogIn className="w-4 h-4" />
                     <span>Authorize</span>
@@ -252,13 +434,13 @@ export default function GoogleAuthModal({ isOpen, onClose, onSignIn }: GoogleAut
           </AnimatePresence>
 
           {/* Secure Sandbox explanation */}
-          <div className="pt-4 border-t border-white/5 text-[9px] text-white/30 text-center font-sans space-y-1.5 leading-normal">
+          <div className="pt-3 border-t border-white/5 text-[9px] text-white/30 text-center font-sans space-y-1 leading-normal">
             <div className="flex items-center justify-center gap-1 text-[#34A853]">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span className="font-mono uppercase tracking-wider text-[8px] font-bold">Encrypted Local Bridge</span>
+              <span className="font-mono uppercase tracking-wider text-[8px] font-bold">Client-Side Auth Bridge</span>
             </div>
             <p>
-              Holding active sandbox mode: This mimics the Google OAuth credential handshake but keeps it client-side without live redirect requirements.
+              Holding active sandbox mode: Signs in via Google identity node while keeping credentials safely encrypted in your browser without live redirect delays.
             </p>
           </div>
         </div>
